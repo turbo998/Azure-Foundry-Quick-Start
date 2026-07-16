@@ -419,10 +419,11 @@ with AIProjectClient(endpoint=endpoint, credential=credential, allow_preview=Tru
 | GPT-Image-2 | — | 10 images/min | ✅ |
 | text-embedding-3-large | 350K | 2100 | ✅ |
 
-### 配额管理已 GA（Global / Data Zone Standard）
+### 配额作用域：以门户 Scope 列为准
 
 - **Model Capacities API** — 查询"这个模型现在能在哪部署"
 - **Usages API** — 查询已消耗配额
+- 截至 2026-07-16，模型正在分批迁移到订阅级共享池，并非所有模型都已统一共享；在 **Foundry Portal > Operate > Quota** 查看模型对应的 **Scope** 列，以该实时值判断配额作用域
 - 429 排查看响应头：`x-ratelimit-limit-tokens`、`x-ratelimit-remaining-*`、`retry-after-ms`
 - ⚠️ **配额 ≠ 计费 token**：限流按请求时估算的最大处理 token（含 `max_tokens`）计算，RPM 按分钟内短窗口执行 —— 若应用把 `max_tokens` 设得过大或突发调用，即使 Azure Monitor 用量图表看起来不高也可能被限流
 
@@ -487,6 +488,15 @@ A: 先写清楚工具说明；需要确定性行为用 `tool_choice=required`。
 **Q: Foundry 报"工具不支持"，但文档表里显示支持？**
 A: 工具可用性需要**模型**和**区域**两张表同时为 `Yes`；任一为 `No` 即不可用。同时确认模型确实部署在目标项目/区域（如 Code Interpreter 在 `southcentralus`/`spaincentral` 不可用，与模型无关）。
 
+**Q: Quota 是整个订阅统一共享，还是每个 region 独立？**
+A: 截至 **2026-07-16**，答案取决于具体模型的迁移状态，并非所有模型都已经统一为订阅级共享。请在 **Foundry Portal > Operate > Quota** 查看对应模型的 **Scope** 列，并按实际值判断：
+
+- **Scope = Global**：同一订阅内，相同模型与版本的 **Global Standard** 部署跨 region 共用一个配额池；新增 region 不会让 TPM 翻倍。
+- **Scope = Data Zone**：同一订阅内，相同模型与版本的 **Data Zone Standard** 部署在同一 data zone（如 US 或 EU）共用一个配额池。
+- **Scope = 具体 region**（如 East US）：仍采用既有的 **subscription + region + model/deployment type** 独立配额；在不同 region 部署可获得各自独立的 quota。
+
+官方文档看似冲突，是因为 [Microsoft Foundry Models quotas](https://learn.microsoft.com/en-us/azure/foundry/foundry-models/quotas-limits) 描述的是 **2026-05-07 后开始分批实施**的新共享池机制：先从 Realtime Translate 和 Realtime Whisper 开始，再计划扩展到其他模型；而 [Azure OpenAI quotas and limits](https://learn.microsoft.com/en-us/azure/foundry/openai/quotas-limits) 与 [Manage Azure OpenAI quota](https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/quota) 仍描述按 region 分配的既有机制。这里的 "subscription-level" 只表示最高限制层级在订阅，不自动等于"整个订阅只有一个 quota pool"。新增 **project** 或 **resource** 本身不会增加 quota；它们只是共享并分配 Scope 所对应池中的额度。
+
 ---
 
 ## 13. 常见问题排查
@@ -534,7 +544,9 @@ A: 工具可用性需要**模型**和**区域**两张表同时为 `Yes`；任一
 | 区域可用性 | https://learn.microsoft.com/azure/foundry/foundry-models/concepts/models-sold-directly-by-azure-region-availability |
 | Tool 最佳实践 | https://learn.microsoft.com/azure/foundry/agents/concepts/tool-best-practice |
 | 定价信息 | https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/ |
-| 配额与限制 | https://learn.microsoft.com/azure/ai-services/openai/quotas-limits |
+| Foundry Models 配额与限制 | https://learn.microsoft.com/en-us/azure/foundry/foundry-models/quotas-limits |
+| Azure OpenAI 配额与限制 | https://learn.microsoft.com/en-us/azure/foundry/openai/quotas-limits |
+| Azure OpenAI 配额管理 | https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/quota |
 | Managed VNET 配置 | https://learn.microsoft.com/azure/foundry/how-to/managed-virtual-network |
 
 ---
