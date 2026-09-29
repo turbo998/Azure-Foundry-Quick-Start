@@ -4,6 +4,8 @@
 >
 > 版本 2.0 — 2026 年 7 月（对齐 Microsoft Foundry 2026-06/07 最新发布）
 
+> **2026-09-29 Claude 定向补充：**本次仅澄清 Claude 的订阅、认证与 API 边界，并增加 [Claude Workshop 完整中文指南](claude-on-foundry-workshop-guide.md) / [Full English guide](claude-on-foundry-workshop-guide.en.md)。其他章节仍为既有历史内容，未全面重审；[PDF](azure-foundry-aoai-guide.pdf) 保留为 2026 年 7 月历史快照，不与本次 Markdown 修改同步。仓库入口：[中文](README.md) / [English](README.en.md)。
+
 ---
 
 ## 更新说明（v2.0 vs v1.0）
@@ -62,6 +64,8 @@
 | 内容安全 | 内置 Content Safety，可自定义策略 |
 | Agent 化 | Skills/Toolbox/Memory/Routines 让 Agent 具备可复用能力与自动化触发 |
 
+> **Claude 能力边界：**本表为既有平台概述，不代表所有 Claude 模型/托管版本都支持相同的网络、内容安全、合规、部署类型或工具能力。应按具体模型卡与 [Claude 官方说明](https://learn.microsoft.com/en-us/azure/foundry/foundry-models/how-to/use-foundry-models-claude) 分别核对；应用使用 Agent Framework 也不等于已经部署到 Foundry Agent Service。
+
 ---
 
 ## 2. 前提条件与准备工作
@@ -72,6 +76,8 @@
 4. **浏览器** — Edge / Chrome
 
 > 💡 CSP 客户联系合作伙伴协助开通；EA 客户通过 EA Portal 管理订阅。
+
+> **Claude 不适用上述订阅泛化说明：**截至 2026-09-29，[Claude 官方部署页](https://learn.microsoft.com/en-us/azure/foundry/foundry-models/how-to/use-foundry-models-claude) 明确列出 CSP 订阅等不支持情形，并另有付费方式、账单地区、Marketplace 订阅权限和部署区域要求。请先核对 [Claude 专项前置条件](claude-on-foundry-workshop-guide.md#prerequisites)，不要用 AOAI 开通或权限说明代替 Claude 准入检查。
 
 ---
 
@@ -146,9 +152,9 @@ az cognitiveservices account create \
 | **Grok 4.3**（NEW，xAI） | `grok-4.3` | Chat | Chat Completions API（非 Responses API），高 agentic 能力，注意越狱风险评级更高 |
 | **DeepSeek V4 / V4-Pro / V4-Flash**（NEW） | — | Chat（推理） | 开源模型，100万 token 输入 |
 | **Kimi K2.6 / K2.7-Code**（Moonshot AI，NEW） | — | Chat（推理，多模态） | |
-| **Claude 模型（NEW，2026-06）** | 见下文 | Chat | 首次登陆 Microsoft Foundry，参考 [部署指南](https://learn.microsoft.com/azure/foundry/foundry-models/how-to/use-foundry-models-claude) |
+| **Claude 模型** | 使用实际部署名 | Messages API | 按具体模型/托管版本核对可用性，参考 [部署指南](https://learn.microsoft.com/en-us/azure/foundry/foundry-models/how-to/use-foundry-models-claude) |
 
-> 💡 **Claude 上 Foundry** 是 2026-06 的重要更新：合作伙伴现可在同一 Foundry 项目里对比/切换 GPT 系列与 Claude 模型，便于做多模型路由（Model Router）或按场景选型，无需额外接入 Anthropic 官方 API。
+> **Claude 调用与编排：**模型客户端使用 `https://<resource>.services.ai.azure.com/anthropic` 作为 base URL，Messages 请求路径为 `/anthropic/v1/messages`，`model` 填实际部署名。不要套用本手册的 OpenAI Chat Completions / Responses 示例，也不要仅凭模型可部署就推断 Model Router 支持。Hosted Agent 可以对外提供 Responses 协议，同时在内部调用 Claude Messages；这是不同层次。三条路径、版本差异与未实测适配建议见 [Claude Workshop 指南](claude-on-foundry-workshop-guide.md#architecture)。
 
 ### 5.3 部署配置参数
 
@@ -194,6 +200,8 @@ az cognitiveservices account deployment create \
 | Cognitive Services OpenAI User | 调用 API ✅ |
 | Cognitive Services OpenAI Contributor | 调用 API + 管理部署 |
 | Cognitive Services Contributor | 管理资源（不含数据面，**不能**调用 API） |
+
+> **Claude 身份补充：**上表不能直接作为 Claude 的 RBAC 配置表。Claude 官方 Entra 示例使用 `https://ai.azure.com/.default`，排障页列出 **Cognitive Services User**；模型部署、Marketplace 订阅与推理权限需分开核对。部分模型仅支持 Entra ID，不能假定 API key 始终可用。详见 [Claude 身份矩阵](claude-on-foundry-workshop-guide.md#prerequisites)。托管 Agent identity 也不会自动替换应用中显式配置的模型/Search keys。
 
 Managed Identity 示例（参考 SA 团队既有最佳实践 skill `azure-foundry-managed-identity`）：
 
@@ -536,6 +544,7 @@ A: 工具可用性需要**模型**和**区域**两张表同时为 `Yes`；任一
 | 定价信息 | https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/ |
 | 配额与限制 | https://learn.microsoft.com/azure/ai-services/openai/quotas-limits |
 | Managed VNET 配置 | https://learn.microsoft.com/azure/foundry/how-to/managed-virtual-network |
+| Claude Workshop 三路径指南 | [中文](claude-on-foundry-workshop-guide.md) / [English](claude-on-foundry-workshop-guide.en.md) |
 
 ---
 
