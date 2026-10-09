@@ -1,0 +1,16 @@
+.env
+.env.*
+.azure/
+.git/
+.agentignore
+azure.yaml
+.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+*.log
+tests/
+data/
+ingest.py
+requirements-ingest.txt
+README*

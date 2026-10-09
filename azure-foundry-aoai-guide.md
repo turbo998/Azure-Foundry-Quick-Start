@@ -6,6 +6,8 @@
 
 > **2026-09-29 Claude 定向补充：**本次仅澄清 Claude 的订阅、认证与 API 边界，并增加 [Claude Workshop 完整中文指南](claude-on-foundry-workshop-guide.md) / [Full English guide](claude-on-foundry-workshop-guide.en.md)。其他章节仍为既有历史内容，未全面重审；[PDF](azure-foundry-aoai-guide.pdf) 保留为 2026 年 7 月历史快照，不与本次 Markdown 修改同步。仓库入口：[中文](README.md) / [English](README.en.md)。
 
+> **2026-10-09 实操入口：**[Claude 三路径整合示例](workshops/claude-foundry/README.md) / [English](workshops/claude-foundry/README.en.md) 提供本地 Agent、Foundry IQ、Hosted Responses 代码与运行配置。离线检查不等于云端验收；默认不会部署或上传，真实服务调用与 `--apply` 须另行审批。
+
 ---
 
 ## 更新说明（v2.0 vs v1.0）

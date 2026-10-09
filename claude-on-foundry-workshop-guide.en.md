@@ -2,6 +2,8 @@
 
 [中文](claude-on-foundry-workshop-guide.md) | [Repository home](README.en.md) | [Existing AOAI manual (Chinese)](azure-foundry-aoai-guide.md)
 
+> **Hands-on integration, 2026-10-09:** This repository now includes a [shared three-path workshop](workshops/claude-foundry/README.en.md) with adapted code, placeholder configuration, MIT notices and offline tests. This guide retains its 2026-09-29 upstream research baseline. Its “not run,” adaptation proposals and upstream commands describe that historical research, not the integrated samples' validation status. Use the hands-on entry to run the integrated version without cloning upstream; do not mix the two sets of settings/YAML.
+
 > **Scope and date:** For developers and architects familiar with Python, Azure, and basic API calls who want to understand agent orchestration. This is independent research and operational guidance, not an executable project or a validated deployment runbook. Sources reviewed on **2026-09-29**.
 >
 > **Not run:** This work only examined public source code and official documentation. We did not install sample dependencies, run upstream programs, call models or MCP servers, upload the FAQ, deploy, or modify Azure resources. Every “expected observation” and checklist item is for readers to verify later, not a test result from this work. Even an agent running locally can call billable cloud models and remote tools.
@@ -19,7 +21,7 @@ The research subject is Shilpa Jain's [Claude-on-foundry-handsonworkshop][S1], p
 | --- | --- |
 | Source-confirmed | Files, configuration, or control flow at the pinned commit directly support the finding |
 | Official documentation | Product guidance as reviewed on the stated date; the actual subscription, region, model, and version still need checking |
-| Suggested adaptation | A proposed change for readers' own implementations; this repository does not modify or deliver the upstream application |
+| Suggested adaptation | A proposal from the 2026-09-29 research phase; actual integration changes and validation boundaries are documented separately in the hands-on directory |
 | Unverified | Installation, execution, authorization, reachability, compatibility, or cloud results have not been tested |
 
 **Key conclusions:**
@@ -401,7 +403,7 @@ Revoke temporary roles, revoke/rotate potentially exposed keys, and remove local
 
 This guide is an original synthesis of upstream architecture, implementation, and official materials, not a paragraph-by-paragraph translation of the original README or a repository copy. The [upstream LICENSE][S12] was checked: **MIT License, Copyright (c) 2026 Shilpa Jain**. If copying or adapting its code/substantial portions into your own application, retain the copyright, MIT permission notice, and disclaimer with the copies. The license does not grant access to the author's external MCP service or permission to use its data.
 
-The limited operational commands here explain reader workflows. Upstream Python implementations and environment files are not redistributed. This documentation was prepared with AI assistance and still requires maintainer review before publication, deployment, or product selection, particularly for changing capability and permission statements.
+The limited operational commands here explain pinned upstream workflows. Code adaptations added on 2026-10-09 live separately in the [hands-on directory](workshops/claude-foundry/README.en.md), with the complete [MIT LICENSE](workshops/claude-foundry/LICENSE) and [NOTICE](workshops/claude-foundry/NOTICE.md); upstream environment values are not copied. This documentation was prepared with AI assistance and still requires maintainer review before publication, deployment, or product selection, particularly for changing capability and permission statements.
 
 ### 10.1 Pinned upstream sources
 

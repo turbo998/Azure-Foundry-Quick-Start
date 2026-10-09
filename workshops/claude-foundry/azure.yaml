@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+name: quickstart-claude-workshop
+requiredVersions:
+  azd: ">=1.27.1"
+  extensions:
+    azure.ai.agents: ">=1.0.0-beta.8"
+    azure.ai.projects: ">=1.0.0-beta.4"
+services:
+  cupcake-agent:
+    host: azure.ai.agent
+    project: .
+    language: python
+    kind: hosted
+    name: quickstart-cupcake-agent
+    description: Claude workshop agent with approved store and knowledge-base MCP tools.
+    startupCommand: python hosted.py
+    codeConfiguration:
+      runtime: python_3_13
+      entryPoint: hosted.py
+      dependencyResolution: remote_build
+    protocols:
+      - protocol: responses
+        version: 2.0.0
+    env:
+      APP_CLAUDE_DEPLOYMENT: ${APP_CLAUDE_DEPLOYMENT}
+      APP_CLAUDE_API_KEY: ${APP_CLAUDE_API_KEY}
+      APP_CLAUDE_BASE_URL: ${APP_CLAUDE_BASE_URL}
+      CUPCAKE_MCP_URL: ${CUPCAKE_MCP_URL}
+      AZURE_SEARCH_ENDPOINT: ${AZURE_SEARCH_ENDPOINT}
+      AZURE_SEARCH_API_KEY: ${AZURE_SEARCH_API_KEY}
+      KNOWLEDGE_BASE_NAME: ${KNOWLEDGE_BASE_NAME}
+    container:
+      resources:
+        cpu: "1"
+        memory: 2Gi

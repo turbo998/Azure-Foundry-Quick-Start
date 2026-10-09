@@ -13,3 +13,6 @@
 **/*.p12
 **/*.tfstate
 **/*.tfstate.*
+**/.venv/
+**/__pycache__/
+**/.azure/
