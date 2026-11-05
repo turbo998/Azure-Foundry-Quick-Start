@@ -1,0 +1,6 @@
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/workshops/claude-foundry"
+    schedule:
+      interval: "weekly"
