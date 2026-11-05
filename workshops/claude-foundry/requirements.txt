@@ -1,4 +1,4 @@
 agent-framework-core==1.21.0
-agent-framework-anthropic==1.0.0b260918
+agent-framework-anthropic==1.0.0b261030
 agent-framework-foundry-hosting==1.0.0b260918
 python-dotenv==1.2.4
