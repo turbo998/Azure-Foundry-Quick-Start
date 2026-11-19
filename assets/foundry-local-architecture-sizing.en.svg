@@ -1,0 +1,195 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 820" width="1200" height="820" font-family="'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif">
+  <defs>
+    <linearGradient id="hdrGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0F172A"/>
+      <stop offset="55%" stop-color="#1E3A8A"/>
+      <stop offset="100%" stop-color="#0078D4"/>
+    </linearGradient>
+    <linearGradient id="npuGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0F766E"/>
+      <stop offset="100%" stop-color="#14B8A6"/>
+    </linearGradient>
+    <linearGradient id="gpuGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#4F46E5"/>
+      <stop offset="100%" stop-color="#7C3AED"/>
+    </linearGradient>
+    <filter id="cardShadow" x="-2%" y="-2%" width="104%" height="106%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#0F172A" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="820" fill="#F8FAFC"/>
+
+  <!-- Top Header -->
+  <rect x="24" y="20" width="1152" height="92" rx="14" fill="url(#hdrGrad)"/>
+  <text x="48" y="56" fill="#FFFFFF" font-size="21" font-weight="700">Microsoft Foundry Local Architecture, EP Routing &amp; Unified Memory Sizing</text>
+  <text x="48" y="84" fill="#BFDBFE" font-size="13">Microsoft Foundry on Windows · In-Process Core API (~20 MB) · Windows ML 2.x Dynamic EPs · Copilot+ PC 32 GB Baseline (2026-11-19)</text>
+  <rect x="972" y="42" width="180" height="46" rx="8" fill="#FFFFFF" fill-opacity="0.14" stroke="#93C5FD" stroke-opacity="0.4"/>
+  <text x="1062" y="62" text-anchor="middle" fill="#FFFFFF" font-size="12" font-weight="700">CLI v0.14.0 · Win11 24H2+</text>
+  <text x="1062" y="79" text-anchor="middle" fill="#DBEAFE" font-size="11">Build &gt;= 26100 · No Cloud Key</text>
+
+  <!-- COLUMN 1: In-Process Runtime Architecture -->
+  <rect x="24" y="128" width="368" height="564" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5" filter="url(#cardShadow)"/>
+  <rect x="24" y="128" width="368" height="42" rx="12" fill="#EFF6FF"/>
+  <rect x="24" y="156" width="368" height="14" fill="#EFF6FF"/>
+  <text x="44" y="155" fill="#1E3A8A" font-size="15" font-weight="700">1. In-Process Native Runtime Stack</text>
+
+  <!-- Layer 1A: App Host -->
+  <rect x="42" y="184" width="212" height="86" rx="8" fill="#F0F9FF" stroke="#38BDF8" stroke-width="1.2"/>
+  <text x="54" y="205" fill="#0369A1" font-size="12.5" font-weight="700">App Host Process (Primary Path)</text>
+  <text x="54" y="224" fill="#334155" font-size="11">• C# (.NET 9 / .NET 10 WinML)</text>
+  <text x="54" y="241" fill="#334155" font-size="11">• Python 3.11+ / JS / Rust / C++</text>
+  <text x="54" y="258" fill="#0284C7" font-size="10.5" font-weight="600">Direct calls · Zero HTTP IPC overhead</text>
+
+  <!-- Layer 1B: Optional CLI/REST -->
+  <rect x="262" y="184" width="112" height="86" rx="8" fill="#F8FAFC" stroke="#94A3B8" stroke-dasharray="4,3" stroke-width="1.2"/>
+  <text x="318" y="204" text-anchor="middle" fill="#475569" font-size="11" font-weight="700">Optional CLI/REST</text>
+  <text x="318" y="222" text-anchor="middle" fill="#64748B" font-size="10">foundry v0.14.0</text>
+  <text x="318" y="238" text-anchor="middle" fill="#64748B" font-size="10">OpenAI-compatible</text>
+  <text x="318" y="255" text-anchor="middle" fill="#475569" font-size="9.5">--port 39839</text>
+
+  <!-- Arrow down -->
+  <line x1="208" y1="270" x2="208" y2="292" stroke="#0078D4" stroke-width="2"/>
+  <polygon points="208,298 203,289 213,289" fill="#0078D4"/>
+
+  <!-- Layer 2: Core API -->
+  <rect x="42" y="300" width="332" height="92" rx="8" fill="#1E293B"/>
+  <text x="56" y="323" fill="#38BDF8" font-size="13" font-weight="700">Foundry Local Core API (~20 MB Native Lib)</text>
+  <text x="56" y="343" fill="#E2E8F0" font-size="11">• Windows (.dll) / Linux (.so) / macOS (.dylib)</text>
+  <text x="56" y="361" fill="#CBD5E1" font-size="11">• Lifecycle: Alias lookup → Download → Cache → Load/Unload</text>
+  <text x="56" y="379" fill="#CBD5E1" font-size="11">• Thread-safe ChatSession · KV-Cache · Auto HW detection</text>
+
+  <!-- Arrow down -->
+  <line x1="208" y1="392" x2="208" y2="414" stroke="#0078D4" stroke-width="2"/>
+  <polygon points="208,420 203,411 213,411" fill="#0078D4"/>
+
+  <!-- Layer 3: ORT + OGA + WinML -->
+  <rect x="42" y="422" width="332" height="118" rx="8" fill="#EFF6FF" stroke="#60A5FA" stroke-width="1.2"/>
+  <text x="56" y="444" fill="#1D4ED8" font-size="12.5" font-weight="700">ONNX Runtime + GenAI (OGA) + Windows ML 2.x</text>
+  <rect x="54" y="454" width="150" height="74" rx="6" fill="#FFFFFF" stroke="#BFDBFE"/>
+  <text x="64" y="472" fill="#1E40AF" font-size="11" font-weight="700">WinML EP Registration</text>
+  <text x="64" y="489" fill="#475569" font-size="10">• ExecutionProviderCatalog</text>
+  <text x="64" y="504" fill="#475569" font-size="10">• On-demand IHV EP plugins</text>
+  <text x="64" y="519" fill="#475569" font-size="10">• Driver version negotiation</text>
+
+  <rect x="212" y="454" width="150" height="74" rx="6" fill="#FFFFFF" stroke="#BFDBFE"/>
+  <text x="222" y="472" fill="#1E40AF" font-size="11" font-weight="700">Foundry Catalog</text>
+  <text x="222" y="489" fill="#475569" font-size="10">• foundrylocal.ai registry</text>
+  <text x="222" y="504" fill="#475569" font-size="10">• Pull once, run 100% offline</text>
+  <text x="222" y="519" fill="#475569" font-size="10">• Pre-quantized ONNX variants</text>
+
+  <!-- Package Guardrail Box -->
+  <rect x="42" y="554" width="332" height="122" rx="8" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.2"/>
+  <text x="56" y="575" fill="#B45309" font-size="12" font-weight="700">SDK &amp; Packaging Pitfalls to Avoid</text>
+  <text x="56" y="595" fill="#78350F" font-size="10.5">1. .NET 10-only machines: update csproj TFM to</text>
+  <text x="66" y="611" fill="#92400E" font-size="10.5" font-family="Consolas, monospace">net10.0-windows10.0.26100.0</text>
+  <text x="56" y="629" fill="#78350F" font-size="10.5">2. Python venv rule: install ONLY foundry-local-sdk-winml;</text>
+  <text x="66" y="645" fill="#78350F" font-size="10.5">never co-install foundry-local-sdk (onnxruntime-core clash)</text>
+  <text x="56" y="663" fill="#DC2626" font-size="10.5" font-weight="600">3. Never install PyPI 'foundry-local' (unrelated 3rd-party pkg)</text>
+
+  <!-- COLUMN 2: Deterministic EP Priority Ladder -->
+  <rect x="408" y="128" width="384" height="564" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5" filter="url(#cardShadow)"/>
+  <rect x="408" y="128" width="384" height="42" rx="12" fill="#F0FDFA"/>
+  <rect x="408" y="156" width="384" height="14" fill="#F0FDFA"/>
+  <text x="428" y="155" fill="#115E59" font-size="15" font-weight="700">2. Deterministic EP Priority &amp; Driver Gates</text>
+
+  <!-- P0 NPU -->
+  <rect x="426" y="184" width="348" height="114" rx="8" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.5"/>
+  <rect x="436" y="194" width="112" height="22" rx="5" fill="url(#npuGrad)"/>
+  <text x="492" y="209" text-anchor="middle" fill="#FFFFFF" font-size="10.5" font-weight="700">PRIORITY_NPU = 0</text>
+  <text x="556" y="209" fill="#0F766E" font-size="12" font-weight="700">Dedicated NPU First</text>
+  <text x="438" y="230" fill="#1E293B" font-size="10.5">• <tspan font-weight="700">QNN (Qualcomm)</tspan>: X Elite/Plus Hexagon · Driver &gt;= 30.0.140.0</text>
+  <text x="448" y="246" fill="#0F766E" font-size="10.5">13 catalog models (QuaRot+GPTQ): phi-4-mini-reasoning (2.78G)</text>
+  <text x="438" y="264" fill="#334155" font-size="10.5">• <tspan font-weight="700">OpenVINO NPU</tspan>: Intel ArrowLake 15th+ (&gt;= 32.0.100.4239)</text>
+  <text x="438" y="281" fill="#334155" font-size="10.5">• <tspan font-weight="700">VitisAI NPU</tspan>: AMD Adrenalin 25.6.3–25.9.1 (32.00.0203.280+)</text>
+
+  <!-- P1 Vendor GPU -->
+  <rect x="426" y="308" width="348" height="92" rx="8" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.3"/>
+  <rect x="436" y="318" width="144" height="22" rx="5" fill="url(#gpuGrad)"/>
+  <text x="508" y="333" text-anchor="middle" fill="#FFFFFF" font-size="10.5" font-weight="700">PRIORITY_VENDOR_GPU = 1</text>
+  <text x="588" y="333" fill="#4338CA" font-size="12" font-weight="700">IHV Native GPU</text>
+  <text x="438" y="354" fill="#1E293B" font-size="10.5">• <tspan font-weight="700">NvTensorRTRTX / CUDA</tspan>: RTX 30XX+ · &gt;= 32.0.15.5585 · CUDA 12.5</text>
+  <text x="438" y="372" fill="#334155" font-size="10.5">• <tspan font-weight="700">OpenVINO GPU</tspan>: Intel AlderLake 12th+ (&gt;= 32.0.101.1029)</text>
+  <text x="438" y="389" fill="#4F46E5" font-size="10.5">58 CUDA / 16 TensorRT-RTX / 18 OpenVINO GPU catalog variants</text>
+
+  <!-- P2 Generic GPU (WebGPU) -->
+  <rect x="426" y="410" width="348" height="98" rx="8" fill="#F5F3FF" stroke="#8B5CF6" stroke-width="1.3"/>
+  <rect x="436" y="420" width="148" height="22" rx="5" fill="#7C3AED"/>
+  <text x="510" y="435" text-anchor="middle" fill="#FFFFFF" font-size="10.5" font-weight="700">PRIORITY_GENERIC_GPU = 2</text>
+  <text x="592" y="435" fill="#5B21B6" font-size="12" font-weight="700">WebGPU Fallback</text>
+  <text x="438" y="456" fill="#1E293B" font-size="10.5">• <tspan font-weight="700">WebGpuExecutionProvider</tspan>: Google Dawn → D3D12 / Metal</text>
+  <text x="438" y="474" fill="#5B21B6" font-size="10.5" font-weight="600">★ Snapdragon X Elite Gotcha: phi-4-mini has NO QNN variant,</text>
+  <text x="448" y="490" fill="#5B21B6" font-size="10.5" font-weight="600">so it routes to Adreno X1-85 GPU (3.72 GB disk / 3.74 GB VRAM)</text>
+
+  <!-- P3/P4 CPU -->
+  <rect x="426" y="518" width="348" height="86" rx="8" fill="#F8FAFC" stroke="#94A3B8" stroke-width="1.2"/>
+  <rect x="436" y="528" width="136" height="22" rx="5" fill="#475569"/>
+  <text x="504" y="543" text-anchor="middle" fill="#FFFFFF" font-size="10.5" font-weight="700">PRIORITY_CPU = 3 / 4</text>
+  <text x="580" y="543" fill="#334155" font-size="12" font-weight="700">CPU &amp; Speech Models</text>
+  <text x="438" y="564" fill="#334155" font-size="10.5">• P3 OpenVINO CPU (TigerLake 11th+ &gt;= 32.0.100.9565)</text>
+  <text x="438" y="581" fill="#334155" font-size="10.5">• P4 CPUExecutionProvider (MLAS x64/arm64, 59 RTN incl. Whisper)</text>
+  <text x="438" y="597" fill="#DC2626" font-size="10">Note: 5 legacy generic-cpu IDs are flagged UNSUPPORTED_ON_ARM64</text>
+
+  <!-- Alias Rule Callout -->
+  <rect x="426" y="614" width="348" height="62" rx="8" fill="#ECFDF5" stroke="#10B981" stroke-width="1.2"/>
+  <text x="438" y="635" fill="#065F46" font-size="11.5" font-weight="700">Best Practice: Pass Model Alias, Not Full Variant ID</text>
+  <text x="438" y="653" fill="#047857" font-size="10.5">GetModelAsync("phi-4-mini-reasoning") resolves P0→P4 automatically.</text>
+  <text x="438" y="668" fill="#047857" font-size="10.5">Only pass explicit *-generic-cpu IDs when benchmarking CPU fallback.</text>
+
+  <!-- COLUMN 3: Copilot+ PC 32GB Unified Memory Sizing -->
+  <rect x="808" y="128" width="368" height="564" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5" filter="url(#cardShadow)"/>
+  <rect x="808" y="128" width="368" height="42" rx="12" fill="#F5F3FF"/>
+  <rect x="808" y="156" width="368" height="14" fill="#F5F3FF"/>
+  <text x="828" y="155" fill="#4C1D95" font-size="15" font-weight="700">3. Copilot+ PC 32 GB Unified Memory Sizing</text>
+
+  <!-- Reference Hardware Box -->
+  <rect x="826" y="184" width="332" height="82" rx="8" fill="#F8FAFC" stroke="#CBD5E1"/>
+  <text x="838" y="203" fill="#0F172A" font-size="11.5" font-weight="700">Reference Profile (Surface Laptop 7th Ed · ARM64)</text>
+  <text x="838" y="220" fill="#334155" font-size="10.5">• SoC: Snapdragon X Elite X1E80100 (12-core) · Win11 Build 26300</text>
+  <text x="838" y="236" fill="#0F766E" font-size="10.5" font-weight="600">• NPU: Hexagon 45 TOPS (Driver 30.0.220.3000 &gt;= 30.0.140.0 ✓)</text>
+  <text x="838" y="252" fill="#4F46E5" font-size="10.5" font-weight="600">• GPU: Adreno X1-85 (Driver 31.0.133.1 ✓) · 32 GB LPDDR5x Unified</text>
+
+  <!-- Unified Memory Bar -->
+  <text x="826" y="286" fill="#1E293B" font-size="11.5" font-weight="700">32.0 GB Shared Pool Budget (CPU + NPU + Adreno GPU)</text>
+  <rect x="826" y="296" width="332" height="30" rx="6" fill="#E2E8F0"/>
+  <rect x="826" y="296" width="166" height="30" rx="6" fill="#64748B"/>
+  <rect x="988" y="296" width="88" height="30" fill="#0D9488"/>
+  <rect x="1076" y="296" width="42" height="30" fill="#F59E0B"/>
+  <rect x="1118" y="296" width="40" height="30" rx="6" fill="#16A34A"/>
+  <text x="907" y="315" text-anchor="middle" fill="#FFFFFF" font-size="10" font-weight="700">OS + IDE/Tabs (~16G)</text>
+  <text x="1032" y="315" text-anchor="middle" fill="#FFFFFF" font-size="10" font-weight="700">Weights</text>
+  <text x="1097" y="315" text-anchor="middle" fill="#FFFFFF" font-size="9.5" font-weight="700">KV</text>
+  <text x="1138" y="315" text-anchor="middle" fill="#FFFFFF" font-size="9.5" font-weight="700">Guard</text>
+
+  <text x="826" y="344" fill="#B45309" font-size="10" font-weight="600">Rule: Free RAM &gt;= Model Footprint + KV Cache (1–1.5G) + 3.0G OS Buffer</text>
+
+  <!-- Tier 1: Sweet Spot -->
+  <rect x="826" y="358" width="332" height="96" rx="8" fill="#F0FDF4" stroke="#86EFAC"/>
+  <text x="838" y="378" fill="#166534" font-size="11.5" font-weight="700">✅ Sweet Spot (0.43 – 3.74 GB · Smooth Daily Multitasking)</text>
+  <text x="838" y="396" fill="#1E293B" font-size="10.5">• <tspan font-weight="700">phi-4-mini-reasoning</tspan>: 2.78 GB (QNN NPU · Top reasoning pick)</text>
+  <text x="838" y="413" fill="#1E293B" font-size="10.5">• <tspan font-weight="700">phi-3.5-mini / deepseek-r1-7b</tspan>: 2.02 GB / 3.71 GB (QNN NPU)</text>
+  <text x="838" y="430" fill="#1E293B" font-size="10.5">• <tspan font-weight="700">phi-4-mini / qwen3-4b</tspan>: 3.74 GB / 2.87 GB (Adreno WebGPU)</text>
+  <text x="838" y="446" fill="#15803D" font-size="10">• <tspan font-weight="700">whisper-large-v3-turbo / parakeet-tdt-0.6b</tspan>: 1.25 / 0.68 GB (CPU)</text>
+
+  <!-- Tier 2: Medium -->
+  <rect x="826" y="464" width="332" height="90" rx="8" fill="#EFF6FF" stroke="#93C5FD"/>
+  <text x="838" y="484" fill="#1E40AF" font-size="11.5" font-weight="700">⚡ Workhorse Tier (5.5 – 7.3 GB · Keep &gt;= 11 GB Free RAM)</text>
+  <text x="838" y="502" fill="#1E293B" font-size="10.5">• <tspan font-weight="700">qwen2.5-coder-7b / qwen2.5-7b</tspan>: 7.08 / 6.81 GB (QNN NPU)</text>
+  <text x="838" y="519" fill="#1E293B" font-size="10.5">• <tspan font-weight="700">deepseek-r1-14b</tspan>: 7.12 GB (QNN NPU 4-bit compression win!)</text>
+  <text x="838" y="536" fill="#1E293B" font-size="10.5">• <tspan font-weight="700">qwen3.5-9b (VLM) / mistral-nemo-12b</tspan>: 6.98 / 7.29 GB (WebGPU)</text>
+
+  <!-- Tier 3: Heavy -->
+  <rect x="826" y="564" width="332" height="112" rx="8" fill="#FEF2F2" stroke="#FCA5A5"/>
+  <text x="838" y="584" fill="#991B1B" font-size="11.5" font-weight="700">⚠️ Heavy Tier (8.3 – 11.8 GB · Close Heavy IDE/Tabs First)</text>
+  <text x="838" y="602" fill="#1E293B" font-size="10.5">• <tspan font-weight="700">phi-4 / phi-4-reasoning</tspan>: 8.37 GB / 8.38 GB (Adreno WebGPU)</text>
+  <text x="838" y="619" fill="#1E293B" font-size="10.5">• <tspan font-weight="700">qwen3-14b / gpt-oss-20b</tspan>: 9.93 GB / 11.78 GB (Adreno WebGPU)</text>
+  <text x="838" y="638" fill="#B91C1C" font-size="10">Pitfall: High OS Commit Charge or active Windows Copilot+ NPU locks</text>
+  <text x="838" y="653" fill="#B91C1C" font-size="10">can trigger QNN Error 5005 (free unified RAM or reboot to clear HTP).</text>
+
+  <!-- Bottom Summary Banner -->
+  <rect x="24" y="708" width="1152" height="90" rx="12" fill="#0F172A"/>
+  <text x="48" y="736" fill="#38BDF8" font-size="13.5" font-weight="700">SA Key Takeaways (Verified Against Live Catalog · 2026-11-19)</text>
+  <text x="48" y="758" fill="#E2E8F0" font-size="11.5">1. A 32 GB Snapdragon X Elite Copilot+ PC passes every Foundry Local gate: Hexagon NPU driver 30.0.220.3000 &amp; Win11 Build 26300 exceed minimums.</text>
+  <text x="48" y="778" fill="#93C5FD" font-size="11.5">2. Don't confuse inbox Phi Silica (Windows AI APIs, LAF token, transitioning to Aion Instruct) with Foundry Local (no token, 60+ open model aliases).</text>
+</svg>

@@ -8,6 +8,8 @@ Microsoft Foundry 与 Azure OpenAI 的学习资料，以及 Claude on Foundry Wo
 
 | 目标 | 文档 | 语言与状态 |
 | --- | --- | --- |
+| 评估 Windows / Copilot+ PC 端侧 Foundry Local 硬件准入、EP 路由与统一内存选型 | [Foundry Local 端侧 AI 中文指南](foundry-local-on-device-ai-guide.md) / [English](foundry-local-on-device-ai-guide.en.md) | 2026-11-19 核验双语版；涵盖四层技术栈边界、QNN/WebGPU/CUDA 路由与排障 |
+| 交互测算硬件档位、空闲内存余量与 62 款端侧模型自动 EP 命中 | [Foundry Local 交互容量评估器 (中文)](workshops/foundry-local/sizer.html) / [English Sizer](workshops/foundry-local/sizer.en.html) | 2026-11-19 目录快照自包含 HTML；离线 Strict CSP 零外部依赖 |
 | 在本仓库运行三条 Workshop 路径 | [Claude 实操中文入口](workshops/claude-foundry/README.md) / [English](workshops/claude-foundry/README.en.md) | 2026-10-09 整合；离线检查与云端步骤分开 |
 | 学习 Claude + MCP 本地 Agent、Foundry IQ、Hosted Agent 三条路径 | [Claude Workshop 中文指南](claude-on-foundry-workshop-guide.md) | 完整中文；源码与官方资料核对日期 2026-09-29 |
 | 阅读相同范围的完整英文说明 | [Claude Workshop English guide](claude-on-foundry-workshop-guide.en.md) | 完整英文对应版，不是摘要 |

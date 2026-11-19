@@ -8,6 +8,8 @@ Learning materials for Microsoft Foundry and Azure OpenAI, plus bilingual resear
 
 | Goal | Document | Language and status |
 | --- | --- | --- |
+| Evaluate Foundry Local on-device AI hardware readiness, EP routing, and unified memory sizing | [Foundry Local English guide](foundry-local-on-device-ai-guide.en.md) / [中文](foundry-local-on-device-ai-guide.md) | Bilingual 2026-11-19 verified guide; Windows AI 4-tier stack, QNN/WebGPU/CUDA routing, and troubleshooting |
+| Interactively size hardware profiles, free memory headroom, and auto-selected EPs across 62 models | [Foundry Local Interactive Sizer (EN)](workshops/foundry-local/sizer.en.html) / [中文评估器](workshops/foundry-local/sizer.html) | Self-contained 2026-11-19 catalog HTML; offline Strict CSP with zero external dependencies |
 | Run the three workshop paths in this repository | [Claude hands-on English entry](workshops/claude-foundry/README.en.md) / [中文](workshops/claude-foundry/README.md) | Integrated 2026-10-09; offline checks separated from cloud steps |
 | Learn all three paths: local Claude + MCP agent, Foundry IQ, and hosted agent | [Claude Workshop Chinese guide](claude-on-foundry-workshop-guide.md) | Full Chinese guide; source and official-reference review dated 2026-09-29 |
 | Read complete English coverage of the same scope | [Claude Workshop English guide](claude-on-foundry-workshop-guide.en.md) | Full English counterpart, not a summary |

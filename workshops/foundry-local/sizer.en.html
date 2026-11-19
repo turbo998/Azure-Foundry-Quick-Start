@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self' data:">
+  <title>Foundry Local Hardware Readiness & Unified Memory Sizer</title>
+  <style>
+    :root {
+      --bg: #F8FAFC;
+      --card: #FFFFFF;
+      --ink: #0F172A;
+      --muted: #475569;
+      --subtle: #64748B;
+      --border: #E2E8F0;
+      --azure: #0078D4;
+      --azure-dark: #1E3A8A;
+      --npu-bg: #F0FDFA;
+      --npu-fg: #0F766E;
+      --npu-bd: #5EEAD4;
+      --gpu-bg: #F5F3FF;
+      --gpu-fg: #5B21B6;
+      --gpu-bd: #C4B5FD;
+      --cpu-bg: #F1F5F9;
+      --cpu-fg: #334155;
+      --cpu-bd: #CBD5E1;
+      --ok-bg: #DCFCE7;
+      --ok-fg: #166534;
+      --warn-bg: #FEF3C7;
+      --warn-fg: #92400E;
+      --err-bg: #FEE2E2;
+      --err-fg: #991B1B;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Microsoft YaHei', 'PingFang SC', sans-serif;
+      line-height: 1.5;
+    }
+    .topbar {
+      background: #0F172A;
+      color: #F8FAFC;
+      padding: 12px 24px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid #1E293B;
+    }
+    .brand-wrap { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .brand-title { font-weight: 700; font-size: 14px; color: #38BDF8; }
+    .date-pill {
+      font-size: 11.5px;
+      background: rgba(56, 189, 248, 0.14);
+      color: #BAE6FD;
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      padding: 2px 9px;
+      border-radius: 999px;
+    }
+    .nav-links { display: flex; gap: 10px; flex-wrap: wrap; }
+    .nav-links a {
+      color: #E2E8F0;
+      text-decoration: none;
+      font-size: 12.5px;
+      padding: 5px 11px;
+      border-radius: 6px;
+      border: 1px solid #334155;
+      background: #1E293B;
+    }
+    .nav-links a:hover { background: #334155; color: #FFFFFF; }
+    .container { max-width: 1320px; margin: 0 auto; padding: 22px 20px 44px; }
+    .hero {
+      background: linear-gradient(125deg, #0F172A 0%, #1E3A8A 58%, #0078D4 100%);
+      color: #FFFFFF;
+      padding: 24px 28px;
+      border-radius: 14px;
+      margin-bottom: 18px;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+    }
+    .hero h1 { margin: 0 0 8px; font-size: 23px; font-weight: 700; }
+    .hero p { margin: 0; font-size: 13.5px; color: #DBEAFE; max-width: 1060px; }
+    .controls-card, .gate-card, .inspector-card, .table-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.03);
+    }
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 2fr 1.6fr 1.1fr 1.1fr 1.1fr;
+      gap: 14px;
+      align-items: end;
+    }
+    @media (max-width: 1100px) {
+      .controls-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 680px) {
+      .controls-grid { grid-template-columns: 1fr; }
+    }
+    label.ctrl-lbl {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    select, input[type="text"] {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid #CBD5E1;
+      font-size: 13px;
+      color: var(--ink);
+      background: #FFFFFF;
+    }
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    input[type="range"] { flex: 1; accent-color: var(--azure); cursor: pointer; }
+    .mem-readout {
+      font-weight: 800;
+      font-size: 15px;
+      color: var(--azure-dark);
+      min-width: 68px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .presets-bar {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--border);
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--subtle);
+    }
+    .preset-btn {
+      background: #F1F5F9;
+      border: 1px solid #CBD5E1;
+      color: #1E293B;
+      border-radius: 999px;
+      padding: 4px 11px;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .preset-btn:hover { background: #E0F2FE; border-color: #38BDF8; color: #0369A1; }
+    .gate-card {
+      background: #F0F9FF;
+      border-color: #BAE6FD;
+      padding: 13px 18px;
+    }
+    .gate-title { font-size: 12px; font-weight: 700; color: #0369A1; margin-bottom: 4px; }
+    .gate-body { font-size: 12.5px; color: #0C4A6E; }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 900px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+    .kpi-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 15px 18px;
+    }
+    .kpi-lbl { font-size: 12px; font-weight: 600; color: var(--subtle); }
+    .kpi-val { font-size: 26px; font-weight: 800; margin: 4px 0 2px; font-variant-numeric: tabular-nums; }
+    .kpi-sub { font-size: 11.5px; color: var(--muted); }
+    .inspector-hdr {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .inspector-hdr h2 { margin: 0; font-size: 15px; color: var(--ink); }
+    .inspector-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      gap: 18px;
+    }
+    @media (max-width: 960px) { .inspector-grid { grid-template-columns: 1fr; } }
+    .mem-bar-track {
+      width: 100%;
+      height: 28px;
+      background: #E2E8F0;
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      margin: 8px 0 10px;
+    }
+    .seg-used { background: #64748B; }
+    .seg-model { background: #0D9488; }
+    .seg-kv { background: #F59E0B; }
+    .seg-guard { background: #3B82F6; }
+    .seg-free { background: #22C55E; }
+    .seg-over { background: #DC2626; }
+    .legend-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 11.5px;
+      color: var(--muted);
+    }
+    .leg-dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+      margin-right: 5px;
+      vertical-align: middle;
+    }
+    .callout-note {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      border: 1px solid #CBD5E1;
+      background: #F8FAFC;
+    }
+    .callout-warn { background: #FFFBEB; border-color: #FCD34D; color: #92400E; }
+    .callout-err { background: #FEF2F2; border-color: #FCA5A5; color: #991B1B; }
+    .callout-ok { background: #F0FDF4; border-color: #86EFAC; color: #166534; }
+    .code-box {
+      background: #0F172A;
+      color: #E2E8F0;
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .code-tabs {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #1E293B;
+      padding: 6px 10px;
+      gap: 6px;
+    }
+    .tab-group { display: flex; gap: 4px; }
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: #94A3B8;
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .tab-btn.active { background: #0078D4; color: #FFFFFF; }
+    .copy-btn {
+      background: #334155;
+      border: 1px solid #475569;
+      color: #F8FAFC;
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    pre.code-pre {
+      margin: 0;
+      padding: 12px 14px;
+      font-family: Consolas, 'SFMono-Regular', Menlo, monospace;
+      font-size: 11.5px;
+      line-height: 1.45;
+      overflow-x: auto;
+      white-space: pre;
+    }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    th {
+      text-align: left;
+      padding: 10px 10px;
+      background: #F1F5F9;
+      color: #334155;
+      font-weight: 700;
+      border-bottom: 2px solid var(--border);
+      white-space: nowrap;
+    }
+    td {
+      padding: 10px 10px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    tbody tr { cursor: pointer; transition: background 0.1s ease; }
+    tbody tr:hover { background: #F8FAFC; }
+    tbody tr.selected-row { background: #EFF6FF; outline: 1px solid #93C5FD; }
+    .alias-name { font-weight: 700; color: #0F172A; font-family: Consolas, monospace; font-size: 13px; }
+    .sub-meta { font-size: 11px; color: var(--subtle); margin-top: 2px; }
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      margin: 1px 3px 1px 0;
+    }
+    .pill-npu { background: var(--npu-bg); color: var(--npu-fg); border: 1px solid var(--npu-bd); }
+    .pill-gpu { background: var(--gpu-bg); color: var(--gpu-fg); border: 1px solid var(--gpu-bd); }
+    .pill-cpu { background: var(--cpu-bg); color: var(--cpu-fg); border: 1px solid var(--cpu-bd); }
+    .pill-ok { background: var(--ok-bg); color: var(--ok-fg); }
+    .pill-warn { background: var(--warn-bg); color: var(--warn-fg); }
+    .pill-err { background: var(--err-bg); color: var(--err-fg); }
+    .pill-tool { background: #E0F2FE; color: #0369A1; }
+    .var-chip {
+      display: inline-block;
+      font-size: 10.5px;
+      padding: 1px 6px;
+      margin: 1px 3px 2px 0;
+      border-radius: 4px;
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      color: #475569;
+      font-family: Consolas, monospace;
+    }
+    .var-chip.var-active {
+      background: #DBEAFE;
+      border-color: #60A5FA;
+      color: #1E3A8A;
+      font-weight: 700;
+    }
+    .var-chip.var-blocked {
+      text-decoration: line-through;
+      color: #94A3B8;
+    }
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      color: var(--subtle);
+      margin-top: 22px;
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand-wrap">
+      <span class="brand-title">Microsoft Foundry on Windows · Interactive Sizer</span>
+      <span class="date-pill">2026-11-19 Verified Catalog (62 Aliases / 227 Variants)</span>
+    </div>
+    <nav class="nav-links">
+      <a href="sizer.html">中文</a>
+      <a href="../../foundry-local-on-device-ai-guide.en.md">Architecture & Decision Guide</a>
+      <a href="../../README.en.md">Repo Home</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h1>Foundry Local Hardware Readiness & Unified Memory Sizer</h1>
+      <p>Grounded in Microsoft Learn driver gates and live foundrylocal.ai/api/models metadata: pick a hardware profile and free memory budget to resolve deterministic P0→P4 Execution Providers, disk/VRAM footprints, and OS Commit Charge guardrails.</p>
+    </section>
+
+    <section class="controls-card">
+      <div class="controls-grid">
+        <div>
+          <label class="ctrl-lbl" for="profileSelect">1. Hardware Profile</label>
+          <select id="profileSelect"></select>
+        </div>
+        <div>
+          <label class="ctrl-lbl" for="freeSlider">2. Available Free Unified RAM / Dedicated VRAM (GB)</label>
+          <div class="slider-row">
+            <input type="range" id="freeSlider" min="1.0" max="48.0" step="0.5" value="14.0">
+            <span class="mem-readout" id="freeReadout">14.0 GB</span>
+          </div>
+        </div>
+        <div>
+          <label class="ctrl-lbl" for="taskSelect">3. Task Filter</label>
+          <select id="taskSelect">
+            <option value="all">All Tasks (62 Aliases)</option>
+            <option value="chat">Chat & Reasoning</option>
+            <option value="coding">Coding & Code Assist</option>
+            <option value="vlm">Vision-Language (VLM)</option>
+            <option value="asr">Speech / ASR</option>
+            <option value="embed">Embeddings</option>
+            <option value="decision">Decision & Ranking</option>
+          </select>
+        </div>
+        <div>
+          <label class="ctrl-lbl" for="statusSelect">4. Readiness Filter</label>
+          <select id="statusSelect">
+            <option value="all">All Statuses</option>
+            <option value="ready">✅ Safe Fit (Ample Headroom)</option>
+            <option value="tight">⚠️ Tight Headroom (Commit Risk)</option>
+            <option value="oom">⛔ Insufficient RAM / Unsupported</option>
+          </select>
+        </div>
+        <div>
+          <label class="ctrl-lbl" for="searchInput">5. Search Model Alias</label>
+          <input type="text" id="searchInput" placeholder="Filter e.g. phi-4, qwen3, deepseek, whisper...">
+        </div>
+      </div>
+      <div class="presets-bar">
+        <span>Quick Free-Memory Presets:</span>
+        <button type="button" class="preset-btn" data-mem="4.0">Heavy Multitask 4.0G</button>
+        <button type="button" class="preset-btn" data-mem="6.5">16G Typical 6.5G</button>
+        <button type="button" class="preset-btn" data-mem="14.0">32G Typical 14.0G</button>
+        <button type="button" class="preset-btn" data-mem="22.0">32G Clean Boot 22.0G</button>
+        <button type="button" class="preset-btn" data-mem="32.0">Workstation 32.0G</button>
+      </div>
+    </section>
+
+    <section class="gate-card">
+      <div class="gate-title">OS, Runtime & Driver Gate Checklist for Selected Hardware</div>
+      <div class="gate-body" id="gateBody"></div>
+    </section>
+
+    <section class="kpi-grid">
+      <div class="kpi-box">
+        <div class="kpi-lbl">Safe Ready Aliases</div>
+        <div class="kpi-val" id="kpiReady" style="color:#166534">0</div>
+        <div class="kpi-sub">Fits Weights + KV + OS Guard Band</div>
+      </div>
+      <div class="kpi-box">
+        <div class="kpi-lbl">Native NPU Accelerated</div>
+        <div class="kpi-val" id="kpiNpu" style="color:#0F766E">0</div>
+        <div class="kpi-sub">PRIORITY_NPU = 0 · Zero GPU Load</div>
+      </div>
+      <div class="kpi-box">
+        <div class="kpi-lbl">GPU Accelerated</div>
+        <div class="kpi-val" id="kpiGpu" style="color:#5B21B6">0</div>
+        <div class="kpi-sub">P1 Vendor GPU / P2 Dawn WebGPU</div>
+      </div>
+      <div class="kpi-box">
+        <div class="kpi-lbl">Top Pick for Current Budget</div>
+        <div class="kpi-val" id="kpiRec" style="font-size:18px;color:#0078D4;margin-top:8px">-</div>
+        <div class="kpi-sub" id="kpiRecSub"></div>
+      </div>
+    </section>
+
+    <section class="inspector-card">
+      <div class="inspector-hdr">
+        <h2 id="inspHeading">Single-Model Unified Memory / VRAM Breakdown & Quickstart Code (Click any table row)</h2>
+        <span id="inspSelectedBadge"></span>
+      </div>
+      <div class="inspector-grid">
+        <div>
+          <div id="memSummaryLine" style="font-size:13px;font-weight:700;color:#1E293B"></div>
+          <div class="mem-bar-track" id="memBarTrack"></div>
+          <div class="legend-row" id="memLegend"></div>
+          <div class="callout-note" id="inspCallout"></div>
+        </div>
+        <div class="code-box">
+          <div class="code-tabs">
+            <div class="tab-group">
+              <button type="button" class="tab-btn active" data-tab="cli">CLI (v0.14.0)</button>
+              <button type="button" class="tab-btn" data-tab="csharp">C# (.NET 10 WinML)</button>
+              <button type="button" class="tab-btn" data-tab="python">Python (venv + winml)</button>
+            </div>
+            <button type="button" class="copy-btn" id="copyBtn">Copy Snippet</button>
+          </div>
+          <pre class="code-pre" id="codePre"></pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="table-card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Model Alias & License</th>
+              <th>Task & Capabilities</th>
+              <th>Auto-Selected EP & Quant</th>
+              <th>Disk / Footprint</th>
+              <th>Readiness & Recommended Free RAM</th>
+              <th>All Catalog Variants (Why This EP Won)</th>
+            </tr>
+          </thead>
+          <tbody id="catalogBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer class="footer">Verified: 2026-11-19 · 100% Offline Self-Contained HTML (Strict CSP: default-src 'none') · Privacy-safe standardized hardware profiles with zero personal host metadata.</footer>
+  </main>
+
+  <script>
+    const T = {"isZh": false, "lang": "en", "title": "Foundry Local Hardware Readiness & Unified Memory Sizer", "brand": "Microsoft Foundry on Windows · Interactive Sizer", "badge_date": "2026-11-19 Verified Catalog (62 Aliases / 227 Variants)", "nav_other_lang": "中文", "nav_other_href": "sizer.html", "nav_guide": "Architecture & Decision Guide", "nav_guide_href": "../../foundry-local-on-device-ai-guide.en.md", "nav_home": "Repo Home", "nav_home_href": "../../README.en.md", "hero_h1": "Foundry Local Hardware Readiness & Unified Memory Sizer", "hero_sub": "Grounded in Microsoft Learn driver gates and live foundrylocal.ai/api/models metadata: pick a hardware profile and free memory budget to resolve deterministic P0→P4 Execution Providers, disk/VRAM footprints, and OS Commit Charge guardrails.", "lbl_profile": "1. Hardware Profile", "lbl_free_mem": "2. Available Free Unified RAM / Dedicated VRAM (GB)", "lbl_task": "3. Task Filter", "lbl_status": "4. Readiness Filter", "lbl_search": "5. Search Model Alias", "search_ph": "Filter e.g. phi-4, qwen3, deepseek, whisper...", "presets_lbl": "Quick Free-Memory Presets:", "preset_4": "Heavy Multitask 4.0G", "preset_6_5": "16G Typical 6.5G", "preset_14": "32G Typical 14.0G", "preset_22": "32G Clean Boot 22.0G", "preset_32": "Workstation 32.0G", "task_all": "All Tasks (62 Aliases)", "task_chat": "Chat & Reasoning", "task_coding": "Coding & Code Assist", "task_vlm": "Vision-Language (VLM)", "task_asr": "Speech / ASR", "task_embed": "Embeddings", "task_decision": "Decision & Ranking", "st_all": "All Statuses", "st_ready": "✅ Safe Fit (Ample Headroom)", "st_tight": "⚠️ Tight Headroom (Commit Risk)", "st_oom": "⛔ Insufficient RAM / Unsupported", "kpi_ready": "Safe Ready Aliases", "kpi_ready_sub": "Fits Weights + KV + OS Guard Band", "kpi_npu": "Native NPU Accelerated", "kpi_npu_sub": "PRIORITY_NPU = 0 · Zero GPU Load", "kpi_gpu": "GPU Accelerated", "kpi_gpu_sub": "P1 Vendor GPU / P2 Dawn WebGPU", "kpi_rec": "Top Pick for Current Budget", "kpi_rec_none": "Increase free RAM or widen filters", "gate_title": "OS, Runtime & Driver Gate Checklist for Selected Hardware", "insp_title": "Single-Model Unified Memory / VRAM Breakdown & Quickstart Code (Click any table row)", "bar_used": "OS & Active Apps Used", "bar_model": "Model Runtime Footprint", "bar_kv": "KV Cache & Activations", "bar_guard": "OS Commit Guard Band", "bar_headroom": "Remaining Free Buffer", "tab_cli": "CLI (v0.14.0)", "tab_csharp": "C# (.NET 10 WinML)", "tab_python": "Python (venv + winml)", "btn_copy": "Copy Snippet", "btn_copied": "Copied ✓", "th_alias": "Model Alias & License", "th_task": "Task & Capabilities", "th_ep": "Auto-Selected EP & Quant", "th_size": "Disk / Footprint", "th_fit": "Readiness & Recommended Free RAM", "th_variants": "All Catalog Variants (Why This EP Won)", "badge_ready": "✅ Safe Fit", "badge_tight": "⚠️ Tight Headroom", "badge_oom": "⛔ Insufficient", "badge_unavail": "🚫 No Variant", "cap_tools": "Tool Calling", "foot_note": "Verified: 2026-11-19 · 100% Offline Self-Contained HTML (Strict CSP: default-src 'none') · Privacy-safe standardized hardware profiles with zero personal host metadata."};
+    const CATALOG = [{"alias":"clm-v0.1-8b","publisher":"Microsoft","license":"apache-2.0","task":"ranking","tools":false,"variants":[{"id":"clm-v0.1-8b-cuda-gpu:2","dev":"gpu","ep":"CUDAExecutionProvider","disk":8.34,"vram":8.34,"quant":"RTN","noArm":false},{"id":"clm-v0.1-8b-generic-gpu:2","dev":"gpu","ep":"WebGpuExecutionProvider","disk":8.34,"vram":8.34,"quant":"RTN","noArm":false},{"id":"clm-v0.1-8b-generic-cpu:2","dev":"cpu","ep":"CPUExecutionProvider","disk":8.34,"vram":8.34,"quant":"RTN","noArm":false}]},{"alias":"deepseek-r1-1.5b","publisher":"Microsoft","license":"MIT","task":"chat-completion","tools":false,"variants":[{"id":"deepseek-r1-distill-qwen-1.5b-qnn-npu:2","dev":"npu","ep":"QNNExecutionProvider","disk":1.52,"vram":1.52,"quant":"QuaRot+GPTQ","noArm":false},{"id":"deepseek-r1-distill-qwen-1.5b-cuda-gpu:4","dev":"gpu","ep":"CUDAExecutionProvider","disk":1.43,"vram":1.43,"quant":"RTN","noArm":false},{"id":"DeepSeek-R1-Distill-Qwen-1.5B-trtrtx-gpu:2","dev":"gpu","ep":"NvTensorRTRTXExecutionProvider","disk":1.43,"vram":1.43,"quant":"RTN","noArm":false},{"id":"DeepSeek-R1-Distill-Qwen-1.5B-openvino-gpu:2","dev":"gpu","ep":"OpenVINOExecutionProvider","disk":1.32,"vram":1.32,"quant":"RTN","noArm":false},{"id":"deepseek-r1-distill-qwen-1.5b-generic-gpu:4","dev":"gpu","ep":"WebGpuExecutionProvider","disk":1.5,"vram":1.5,"quant":"RTN","noArm":false},{"id":"deepseek-r1-distill-qwen-1.5b-generic-cpu:4","dev":"cpu","ep":"CPUExecutionProvider","disk":1.92,"vram":1.92,"quant":"RTN","noArm":true}]},{"alias":"deepseek-r1-14b","publisher":"Microsoft","license":"MIT","task":"chat-completion","tools":false,"variants":[{"id":"deepseek-r1-distill-qwen-14b-qnn-npu:2","dev":"npu","ep":"QNNExecutionProvider","disk":7.12,"vram":7.12,"quant":"QuaRot+GPTQ","noArm":false},{"id":"deepseek-r1-distill-qwen-14b-cuda-gpu:4","dev":"gpu","ep":"CUDAExecutionProvider","disk":9.83,"vram":9.83,"quant":"RTN","noArm":false},{"id":"deepseek-r1-distill-qwen-14b-trtrtx-gpu:2","dev":"gpu","ep":"NvTensorRTRTXExecutionProvider","disk":9.83,"vram":9.83,"quant":"RTN","noArm":false},{"id":"DeepSeek-R1-Distill-Qwen-14B-openvino-gpu:2","dev":"gpu","ep":"OpenVINOExecutionProvider","disk":7.87,"vram":7.87,"quant":"RTN","noArm":false},{"id":"deepseek-r1-distill-qwen-14b-generic-gpu:4","dev":"gpu","ep":"WebGpuExecutionProvider","disk":10.27,"vram":10.27,"quant":"RTN","noArm":false},{"id":"deepseek-r1-distill-qwen-14b-generic-cpu:4","dev":"cpu","ep":"CPUExecutionProvider","disk":11.51,"vram":11.51,"quant":"RTN","noArm":true}]},{"alias":"deepseek-r1-7b","publisher":"Microsoft","license":"MIT","task":"chat-completion","tools":false,"variants":[{"id":"DeepSeek-R1-Distill-Qwen-7B-openvino-npu:4","dev":"npu","ep":"OpenVINOExecutionProvider","disk":4.17,"vram":4.17,"quant":"RTN","noArm":false},{"id":"deepseek-r1-distill-qwen-7b-qnn-npu:2","dev":"npu","ep":"QNNExecutionProvider","disk":3.71,"vram":3.71,"quant":"QuaRot+GPTQ","noArm":false},{"id":"DeepSeek-R1-Distill-Qwen-7B-vitis-npu:2","dev":"npu","ep":"VitisAIExecutionProvider","disk":5.58,"vram":5.58,"quant":"RTN","noArm":false},{"id":"deepseek-r1-distill-qwen-7b-cuda-gpu:4","dev":"gpu","ep":"CUDAExecutionProvider","disk":5.28,"vram":5.28,"quant":"RTN","noArm":false},{"id":"DeepSeek-R1-Distill-Qwen-7B-trtrtx-gpu:2","dev":"gpu","ep":"NvTensorRTRTXExecutionProvider","disk":5.28,"vram":5.28,"quant":"RTN","noArm":false},{"id":"DeepSeek-R1-Distill-Qwen-7B-openvino-gpu:2","dev":"gpu","ep":"OpenVINOExecutionProvider","disk":4.19,"vram":4.19,"quant":"RTN","noArm":false},{"id":"deepseek-r1-distill-qwen-7b-generic-gpu:4","dev":"gpu","ep":"WebGpuExecutionProvider","disk":5.58,"vram":5.58,"quant":"RTN","noArm":false},{"id":"deepseek-r1-distill-qwen-7b-generic-cpu:4","dev":"cpu","ep":"CPUExecutionProvider","disk":6.43,"vram":6.43,"quant":"RTN","noArm":true}]},{"alias":"deepseek-r1-8b","publisher":"Microsoft","license":"MIT","task":"chat-completion","tools":false,"variants":[{"id":"deepseek-r1-distill-llama-8b-cuda-gpu:4","dev":"gpu","ep":"CUDAExecutionProvider","disk":5.52,"vram":5.52,"quant":"RTN","noArm":false},{"id":"deepseek-r1-distill-llama-8b-generic-gpu:4","dev":"gpu","ep":"WebGpuExecutionProvider","disk":5.79,"vram":5.79,"quant":"RTN","noArm":false},{"id":"deepseek-r1-distill-llama-8b-generic-cpu:4","dev":"cpu","ep":"CPUExecutionProvider","disk":6.64,"vram":6.64,"quant":"RTN","noArm":true}]},{"alias":"gemma-4-e2b-it","publisher":"Microsoft","license":"apache-2.0","task":"vision-language-chat","tools":true,"variants":[{"id":"gemma-4-e2b-it-cuda-gpu:3","dev":"gpu","ep":"CUDAExecutionProvider","disk":5.76,"vram":5.76,"quant":"RTN","noArm":false},{"id":"gemma-4-e2b-it-generic-gpu:3","dev":"gpu","ep":"WebGpuExecutionProvider","disk":6.87,"vram":6.87,"quant":"RTN","noArm":false},{"id":"gemma-4-e2b-it-generic-cpu:3","dev":"cpu","ep":"CPUExecutionProvider","disk":5.89,"vram":5.89,"quant":"RTN","noArm":false}]},{"alias":"gpt-oss-20b","publisher":"Microsoft","license":"MIT","task":"chat-completion","tools":false,"variants":[{"id":"gpt-oss-20b-cuda-gpu:1","dev":"gpu","ep":"CUDAExecutionProvider","disk":11.07,"vram":11.07,"quant":"RTN","noArm":false},{"id":"gpt-oss-20b-generic-gpu:1","dev":"gpu","ep":"WebGpuExecutionProvider","disk":11.78,"vram":11.78,"quant":"RTN","noArm":false},{"id":"gpt-oss-20b-generic-cpu:1","dev":"cpu","ep":"CPUExecutionProvider","disk":12.26,"vram":12.26,"quant":"RTN","noArm":false}]},{"alias":"kev-0.8b","publisher":"Microsoft","license":"apache-2.0","task":"decision","tools":false,"variants":[{"id":"kev-0.8b-cuda-gpu:2","dev":"gpu","ep":"CUDAExecutionProvider","disk":1.21,"vram":1.21,"quant":"RTN","noArm":false},{"id":"kev-0.8b-generic-gpu:2","dev":"gpu","ep":"WebGpuExecutionProvider","disk":1.21,"vram":1.21,"quant":"RTN","noArm":false},{"id":"kev-0.8b-generic-cpu:2","dev":"cpu","ep":"CPUExecutionProvider","disk":1.21,"vram":1.21,"quant":"RTN","noArm":false}]},{"alias":"kev-4b","publisher":"Microsoft","license":"apache-2.0","task":"decision","tools":false,"variants":[{"id":"kev-4b-cuda-gpu:2","dev":"gpu","ep":"CUDAExecutionProvider","disk":5.54,"vram":5.54,"quant":"RTN","noArm":false},{"id":"kev-4b-generic-gpu:2","dev":"gpu","ep":"WebGpuExecutionProvider","disk":5.54,"vram":5.54,"quant":"RTN","noArm":false},{"id":"kev-4b-generic-cpu:2","dev":"cpu","ep":"CPUExecutionProvider","disk":15.76,"vram":15.76,"quant":"","noArm":false}]},{"alias":"ling-3.0-tiny","publisher":"Microsoft","license":"MIT","task":"chat-completion","tools":true,"variants":[{"id":"ling-3.0-tiny-cuda-gpu:1","dev":"gpu","ep":"CUDAExecutionProvider","disk":4.35,"vram":4.35,"quant":"RTN","noArm":false}]},{"alias":"mai-code-1.1-flash","publisher":"Microsoft","license":"MIT","task":"coding","tools":true,"variants":[{"id":"mai-code-1.1-flash-cuda-gpu:2","dev":"gpu","ep":"CUDAExecutionProvider","disk":47.97,"vram":73.0,"quant":"RTN","noArm":false}]},{"alias":"ministral-3-3b-instruct-2512","publisher":"Microsoft","license":"apache-2.0","task":"vision-language-chat","tools":true,"variants":[{"id":"ministral-3-3b-instruct-2512-cuda-gpu:2","dev":"gpu","ep":"CUDAExecutionProvider","disk":3.59,"vram":3.59,"quant":"RTN","noArm":false},{"id":"ministral-3-3b-instruct-2512-generic-gpu:2","dev":"gpu","ep":"WebGpuExecutionProvider","disk":3.59,"vram":3.59,"quant":"RTN","noArm":false},{"id":"ministral-3-3b-instruct-2512-generic-cpu:2","dev":"cpu","ep":"CPUExecutionProvider","disk":4.58,"vram":4.58,"quant":"RTN","noArm":false}]},{"alias":"mistral-7b-v0.2","publisher":"Microsoft","license":"apache-2.0","task":"chat-completion","tools":false,"variants":[{"id":"Mistral-7B-Instruct-v0-2-openvino-npu:3","dev":"npu","ep":"OpenVINOExecutionProvider","disk":3.61,"vram":3.61,"quant":"RTN","noArm":false},{"id":"Mistral-7B-Instruct-v0-2-vitis-npu:2","dev":"npu","ep":"VitisAIExecutionProvider","disk":4.07,"vram":4.08,"quant":"RTN","noArm":false},{"id":"mistralai-Mistral-7B-Instruct-v0-2-cuda-gpu:2","dev":"gpu","ep":"CUDAExecutionProvider","disk":3.98,"vram":3.98,"quant":"RTN","noArm":false},{"id":"mistralai-Mistral-7B-Instruct-v0-2-trtrtx-gpu:2","dev":"gpu","ep":"NvTensorRTRTXExecutionProvider","disk":3.98,"vram":3.98,"quant":"RTN","noArm":false},{"id":"Mistral-7B-Instruct-v0-2-openvino-gpu:2","dev":"gpu","ep":"OpenVINOExecutionProvider","disk":4.27,"vram":4.27,"quant":"RTN","noArm":false},{"id":"mistralai-Mistral-7B-Instruct-v0-2-generic-gpu:2","dev":"gpu","ep":"WebGpuExecutionProvider","disk":4.07,"vram":4.08,"quant":"RTN","noArm":false},{"id":"mistralai-Mistral-7B-Instruct-v0-2-generic-cpu:3","dev":"cpu","ep":"CPUExecutionProvider","disk":4.07,"vram":4.18,"quant":"RTN","noArm":false}]},{"alias":"mistral-nemo-12b-instruct","publisher":"Microsoft","license":"apache-2.0","task":"chat-completion","tools":true,"variants":[{"id":"mistral-nemo-12b-instruct-cuda-gpu:1","dev":"gpu","ep":"CUDAExecutionProvider","disk":6.61,"vram":6.61,"quant":"GPTQ","noArm":false},{"id":"mistral-nemo-12b-instruct-generic-gpu:1","dev":"gpu","ep":"WebGpuExecutionProvider","disk":7.29,"vram":7.29,"quant":"GPTQ","noArm":false},{"id":"mistral-nemo-12b-instruct-generic-cpu:1","dev":"cpu","ep":"CPUExecutionProvider","disk":6.81,"vram":6.81,"quant":"GPTQ","noArm":false}]},{"alias":"nemotron-3.5-asr-streaming-0.6b","publisher":"Microsoft","license":"MIT","task":"automatic-speech-recognition","tools":false,"variants":[{"id":"nemotron-3.5-asr-streaming-0.6b-cuda-gpu:3","dev":"gpu","ep":"CUDAExecutionProvider","disk":0.74,"vram":0.74,"quant":"RTN","noArm":false},{"id":"nemotron-3.5-asr-streaming-0.6b-generic-cpu:3","dev":"cpu","ep":"CPUExecutionProvider","disk":0.74,"vram":0.74,"quant":"RTN","noArm":false}]},{"alias":"nemotron-3.5-bolt-74b-a9b","publisher":"Microsoft","license":"custom","task":"coding","tools":true,"variants":[{"id":"nemotron-3.5-bolt-74b-a9b-cuda-gpu:1","dev":"gpu","ep":"CUDAExecutionProvider","disk":24.55,"vram":34.0,"quant":"RTN","noArm":false}]},{"alias":"nemotron-speech-streaming-en-0.6b","publisher":"Microsoft","license":"MIT","task":"automatic-speech-recognition","tools":false,"variants":[{"id":"nemotron-speech-streaming-en-0.6b-cuda-gpu:2","dev":"gpu","ep":"CUDAExecutionProvider","disk":0.68,"vram":0.68,"quant":"RTN","noArm":false},{"id":"nemotron-speech-streaming-en-0.6b-generic-cpu:3","dev":"cpu","ep":"CPUExecutionProvider","disk":0.68,"vram":0.68,"quant":"RTN","noArm":false}]},{"alias":"nemotron-speech-streaming-es-0.6b","publisher":"Microsoft","license":"MIT","task":"automatic-speech-recognition","tools":false,"variants":[{"id":"nemotron-speech-streaming-es-0.6b-ft-cuda-gpu:2","dev":"gpu","ep":"CUDAExecutionProvider","disk":0.71,"vram":0.71,"quant":"RTN","noArm":false},{"id":"nemotron-speech-streaming-es-0.6b-ft-generic-cpu:1","dev":"cpu","ep":"CPUExecutionProvider","disk":0.71,"vram":0.71,"quant":"RTN","noArm":false}]},{"alias":"olmo-3-7b-instruct","publisher":"Microsoft","license":"apache-2.0","task":"chat-completion","tools":true,"variants":[{"id":"olmo-3-7b-instruct-cuda-gpu:1","dev":"gpu","ep":"CUDAExecutionProvider","disk":5.07,"vram":5.07,"quant":"GPTQ","noArm":false},{"id":"olmo-3-7b-instruct-generic-gpu:1","dev":"gpu","ep":"WebGpuExecutionProvider","disk":5.51,"vram":5.51,"quant":"GPTQ","noArm":false},{"id":"olmo-3-7b-instruct-generic-cpu:1","dev":"cpu","ep":"CPUExecutionProvider","disk":5.2,"vram":5.2,"quant":"GPTQ","noArm":false}]},{"alias":"parakeet-tdt-0.6b-v2","publisher":"Microsoft","license":"MIT","task":"automatic-speech-recognition","tools":false,"variants":[{"id":"parakeet-tdt-0.6b-v2-cuda-gpu:1","dev":"gpu","ep":"CUDAExecutionProvider","disk":0.68,"vram":0.68,"quant":"RTN","noArm":false},{"id":"parakeet-tdt-0.6b-v2-generic-cpu:1","dev":"cpu","ep":"CPUExecutionProvider","disk":0.68,"vram":0.68,"quant":"RTN","noArm":false}]},{"alias":"phi-3-mini-128k","publisher":"Microsoft","license":"MIT","task":"chat-completion","tools":false,"variants":[{"id":"phi-3-mini-128k-instruct-qnn-npu:4","dev":"npu","ep":"QNNExecutionProvider","disk":3.54,"vram":3.54,"quant":"QuaRot+GPTQ","noArm":false},{"id":"phi-3-mini-128k-instruct-vitis-npu:2","dev":"npu","ep":"VitisAIExecutionProvider","disk":2.13,"vram":2.13,"quant":"RTN","noArm":false},{"id":"Phi-3-mini-128k-instruct-cuda-gpu:2","dev":"gpu","ep":"CUDAExecutionProvider","disk":2.13,"vram":2.13,"quant":"RTN","noArm":false},{"id":"phi-3-mini-128k-instruct-trtrtx-gpu:2","dev":"gpu","ep":"NvTensorRTRTXExecutionProvider","disk":2.13,"vram":2.13,"quant":"RTN","noArm":false},{"id":"Phi-3-mini-128k-instruct-openvino-gpu:2","dev":"gpu","ep":"OpenVINOExecutionProvider","disk":2.27,"vram":2.27,"quant":"RTN","noArm":false},{"id":"Phi-3-mini-128k-instruct-generic-gpu:2","dev":"gpu","ep":"WebGpuExecutionProvider","disk":2.13,"vram":2.15,"quant":"RTN","noArm":false},{"id":"Phi-3-mini-128k-instruct-generic-cpu:3","dev":"cpu","ep":"CPUExecutionProvider","disk":2.54,"vram":2.54,"quant":"RTN","noArm":false}]},{"alias":"phi-3-mini-4k","publisher":"Microsoft","license":"MIT","task":"chat-completion","tools":false,"variants":[{"id":"Phi-3-mini-4k-instruct-openvino-npu:2","dev":"npu","ep":"OpenVINOExecutionProvider","disk":2.13,"vram":2.13,"quant":"RTN","noArm":false},{"id":"phi-3-mini-4k-instruct-qnn-npu:4","dev":"npu","ep":"QNNExecutionProvider","disk":3.54,"vram":3.54,"quant":"QuaRot+GPTQ","noArm":false},{"id":"Phi-3-mini-4k-instruct-vitis-npu:2","dev":"npu","ep":"VitisAIExecutionProvider","disk":2.13,"vram":2.13,"quant":"RTN","noArm":false},{"id":"Phi-3-mini-4k-instruct-cuda-gpu:2","dev":"gpu","ep":"CUDAExecutionProvider","disk":2.13,"vram":2.13,"quant":"RTN","noArm":false},{"id":"phi-3-mini-4k-instruct-trtrtx-gpu:2","dev":"gpu","ep":"NvTensorRTRTXExecutionProvider","disk":2.13,"vram":2.13,"quant":"RTN","noArm":false},{"id":"Phi-3-mini-4k-instruct-openvino-gpu:2","dev":"gpu","ep":"OpenVINOExecutionProvider","disk":2.01,"vram":2.01,"quant":"RTN","noArm":false},{"id":"Phi-3-mini-4k-instruct-generic-gpu:2","dev":"gpu","ep":"WebGpuExecutionProvider","disk":2.13,"vram":2.13,"quant":"RTN","noArm":false},{"id":"Phi-3-mini-4k-instruct-generic-cpu:3","dev":"cpu","ep":"CPUExecutionProvider","disk":2.53,"vram":3.02,"quant":"RTN","noArm":false}]},{"alias":"phi-3.5-mini","publisher":"Microsoft","license":"MIT","task":"chat-completion","tools":false,"variants":[{"id":"phi-3.5-mini-instruct-qnn-npu:3","dev":"npu","ep":"QNNExecutionProvider","disk":2.02,"vram":2.02,"quant":"QuaRot+GPTQ","noArm":false},{"id":"Phi-3.5-mini-instruct-cuda-gpu:2","dev":"gpu","ep":"CUDAExecutionProvider","disk":2.13,"vram":2.15,"quant":"RTN","noArm":false},{"id":"phi-3.5-mini-instruct-trtrtx-gpu:2","dev":"gpu","ep":"NvTensorRTRTXExecutionProvider","disk":2.13,"vram":2.15,"quant":"RTN","noArm":false},{"id":"Phi-3.5-mini-instruct-openvino-gpu:2","dev":"gpu","ep":"OpenVINOExecutionProvider","disk":1.95,"vram":1.95,"quant":"RTN","noArm":false},{"id":"Phi-3.5-mini-instruct-generic-gpu:2","dev":"gpu","ep":"WebGpuExecutionProvider","disk":2.16,"vram":2.16,"quant":"RTN","noArm":false},{"id":"Phi-3.5-mini-instruct-generic-cpu:2","dev":"cpu","ep":"CPUExecutionProvider","disk":2.53,"vram":2.58,"quant":"RTN","noArm":false}]},{"alias":"phi-4","publisher":"Microsoft","license":"MIT","task":"chat-completion","tools":false,"variants":[{"id":"Phi-4-cuda-gpu:2","dev":"gpu","ep":"CUDAExecutionProvider","disk":8.37,"vram":8.37,"quant":"RTN","noArm":false},{"id":"Phi-4-trtrtx-gpu:2","dev":"gpu","ep":"NvTensorRTRTXExecutionProvider","disk":8.37,"vram":8.37,"quant":"RTN","noArm":false},{"id":"phi-4-openvino-gpu:2","dev":"gpu","ep":"OpenVINOExecutionProvider","disk":8.83,"vram":8.83,"quant":"RTN","noArm":false},{"id":"Phi-4-generic-gpu:2","dev":"gpu","ep":"WebGpuExecutionProvider","disk":8.37,"vram":8.37,"quant":"RTN","noArm":false},{"id":"Phi-4-generic-cpu:2","dev":"cpu","ep":"CPUExecutionProvider","disk":10.16,"vram":10.16,"quant":"RTN","noArm":false}]},{"alias":"phi-4-mini","publisher":"Microsoft","license":"MIT","task":"chat-completion","tools":true,"variants":[{"id":"phi-4-mini-instruct-openvino-npu:4","dev":"npu","ep":"OpenVINOExecutionProvider","disk":2.15,"vram":2.15,"quant":"RTN","noArm":false},{"id":"phi-4-mini-instruct-vitis-npu:2","dev":"npu","ep":"VitisAIExecutionProvider","disk":3.6,"vram":3.62,"quant":"RTN","noArm":false},{"id":"Phi-4-mini-instruct-cuda-gpu:5","dev":"gpu","ep":"CUDAExecutionProvider","disk":3.6,"vram":3.62,"quant":"RTN","noArm":false},{"id":"phi-4-mini-instruct-openvino-gpu:2","dev":"gpu","ep":"OpenVINOExecutionProvider","disk":2.15,"vram":2.15,"quant":"RTN","noArm":false},{"id":"Phi-4-mini-instruct-generic-gpu:5","dev":"gpu","ep":"WebGpuExecutionProvider","disk":3.72,"vram":3.74,"quant":"RTN","noArm":false},{"id":"Phi-4-mini-instruct-generic-cpu:5","dev":"cpu","ep":"CPUExecutionProvider","disk":4.8,"vram":4.85,"quant":"RTN","noArm":true}]},{"alias":"phi-4-mini-instruct-generic-cpu-dq44","publisher":"Microsoft","license":"MIT","task":"chat-completion","tools":true,"variants":[{"id":"Phi-4-mini-instruct-generic-cpu-dq44:1","dev":"cpu","ep":"CPUExecutionProvider","disk":4.22,"vram":4.22,"quant":"RTN","noArm":false}]},{"alias":"phi-4-mini-reasoning","publisher":"Microsoft","license":"MIT","task":"chat-completion","tools":true,"variants":[{"id":"Phi-4-mini-reasoning-openvino-npu:4","dev":"npu","ep":"OpenVINOExecutionProvider","disk":2.15,"vram":2.15,"quant":"QuaRot+GPTQ","noArm":false},{"id":"Phi-4-mini-reasoning-qnn-npu:2","dev":"npu","ep":"QNNExecutionProvider","disk":2.78,"vram":2.78,"quant":"QuaRot+GPTQ","noArm":false},{"id":"Phi-4-mini-reasoning-vitis-npu:2","dev":"npu","ep":"VitisAIExecutionProvider","disk":2.78,"vram":1.63,"quant":"QuaRot+GPTQ","noArm":false},{"id":"Phi-4-mini-reasoning-cuda-gpu:3","dev":"gpu","ep":"CUDAExecutionProvider","disk":3.15,"vram":3.17,"quant":"RTN","noArm":false},{"id":"Phi-4-mini-reasoning-openvino-gpu:2","dev":"gpu","ep":"OpenVINOExecutionProvider","disk":2.47,"vram":2.47,"quant":"QuaRot+GPTQ","noArm":false},{"id":"Phi-4-mini-reasoning-generic-gpu:3","dev":"gpu","ep":"WebGpuExecutionProvider","disk":3.15,"vram":3.17,"quant":"RTN","noArm":false},{"id":"Phi-4-mini-reasoning-generic-cpu:3","dev":"cpu","ep":"CPUExecutionProvider","disk":4.52,"vram":4.57,"quant":"RTN","noArm":false}]},{"alias":"phi-4-reasoning","publisher":"Microsoft","license":"MIT","task":"chat-completion","tools":false,"variants":[{"id":"Phi-4-reasoning-cuda-gpu:1","dev":"gpu","ep":"CUDAExecutionProvider","disk":8.38,"vram":8.38,"quant":"RTN","noArm":false},{"id":"Phi-4-reasoning-generic-gpu:1","dev":"gpu","ep":"WebGpuExecutionProvider","disk":8.38,"vram":8.38,"quant":"RTN","noArm":false},{"id":"Phi-4-reasoning-generic-cpu:1","dev":"cpu","ep":"CPUExecutionProvider","disk":10.16,"vram":10.16,"quant":"RTN","noArm":false}]},{"alias":"qwen2.5-0.5b","publisher":"Microsoft","license":"MIT","task":"chat-completion","tools":true,"variants":[{"id":"qwen2.5-0.5b-instruct-openvino-npu:5","dev":"npu","ep":"OpenVINOExecutionProvider","disk":0.32,"vram":0.32,"quant":"RTN","noArm":false},{"id":"qwen2.5-0.5b-instruct-qnn-npu:1","dev":"npu","ep":"QNNExecutionProvider","disk":0.43,"vram":0.43,"quant":"QuaRot+GPTQ","noArm":false},{"id":"qwen2.5-0.5b-instruct-vitis-npu:3","dev":"npu","ep":"VitisAIExecutionProvider","disk":0.52,"vram":0.52,"quant":"RTN","noArm":false},{"id":"qwen2.5-0.5b-instruct-cuda-gpu:4","dev":"gpu","ep":"CUDAExecutionProvider","disk":0.52,"vram":0.52,"quant":"RTN","noArm":false},{"id":"qwen2.5-0.5b-instruct-trtrtx-gpu:2","dev":"gpu","ep":"NvTensorRTRTXExecutionProvider","disk":0.52,"vram":0.52,"quant":"RTN","noArm":false},{"id":"qwen2.5-0.5b-instruct-openvino-gpu:2","dev":"gpu","ep":"OpenVINOExecutionProvider","disk":0.36,"vram":0.36,"quant":"RTN","noArm":false},{"id":"qwen2.5-0.5b-instruct-generic-gpu:4","dev":"gpu","ep":"WebGpuExecutionProvider","disk":0.68,"vram":0.68,"quant":"RTN","noArm":false},{"id":"qwen2.5-0.5b-instruct-generic-cpu:4","dev":"cpu","ep":"CPUExecutionProvider","disk":0.8,"vram":0.8,"quant":"RTN","noArm":false}]},{"alias":"qwen2.5-1.5b","publisher":"Microsoft","license":"MIT","task":"chat-completion","tools":true,"variants":[{"id":"qwen2.5-1.5b-instruct-openvino-npu:5","dev":"npu","ep":"OpenVINOExecutionProvider","disk":0.86,"vram":0.86,"quant":"RTN","noArm":false},{"id":"qwen2.5-1.5b-instruct-qnn-npu:3","dev":"npu","ep":"QNNExecutionProvider","disk":1.06,"vram":1.06,"quant":"QuaRot+GPTQ","noArm":false},{"id":"qwen2.5-1.5b-instruct-cuda-gpu:4","dev":"gpu","ep":"CUDAExecutionProvider","disk":1.25,"vram":1.25,"quant":"RTN","noArm":false},{"id":"qwen2.5-1.5b-instruct-trtrtx-gpu:2","dev":"gpu","ep":"NvTensorRTRTXExecutionProvider","disk":1.25,"vram":1.25,"quant":"RTN","noArm":false},{"id":"qwen2.5-1.5b-instruct-openvino-gpu:2","dev":"gpu","ep":"OpenVINOExecutionProvider","disk":1.0,"vram":1.0,"quant":"RTN","noArm":false},{"id":"qwen2.5-1.5b-instruct-generic-gpu:4","dev":"gpu","ep":"WebGpuExecutionProvider","disk":1.51,"vram":1.51,"quant":"RTN","noArm":false},{"id":"qwen2.5-1.5b-instruct-generic-cpu:4","dev":"cpu","ep":"CPUExecutionProvider","disk":1.78,"vram":1.78,"quant":"RTN","noArm":false}]},{"alias":"qwen2.5-14b","publisher":"Microsoft","license":"apache-2.0","task":"chat-completion","tools":true,"variants":[{"id":"qwen2.5-14b-instruct-cuda-gpu:4","dev":"gpu","ep":"CUDAExecutionProvider","disk":8.79,"vram":8.79,"quant":"RTN","noArm":false},{"id":"qwen2.5-14b-instruct-trtrtx-gpu:2","dev":"gpu","ep":"NvTensorRTRTXExecutionProvider","disk":8.79,"vram":8.79,"quant":"RTN","noArm":false},{"id":"qwen2.5-14b-instruct-openvino-gpu:2","dev":"gpu","ep":"OpenVINOExecutionProvider","disk":4.79,"vram":4.79,"quant":"RTN","noArm":false},{"id":"qwen2.5-14b-instruct-generic-gpu:4","dev":"gpu","ep":"WebGpuExecutionProvider","disk":9.3,"vram":9.3,"quant":"RTN","noArm":false},{"id":"qwen2.5-14b-instruct-generic-cpu:4","dev":"cpu","ep":"CPUExecutionProvider","disk":11.06,"vram":11.06,"quant":"RTN","noArm":false}]},{"alias":"qwen2.5-3b","publisher":"Microsoft","license":"apache-2.0","task":"chat-completion","tools":true,"variants":[{"id":"qwen2.5-3b-instruct-cuda-gpu:2","dev":"gpu","ep":"CUDAExecutionProvider","disk":2.2,"vram":2.2,"quant":"RTN","noArm":false},{"id":"qwen2.5-3b-instruct-generic-gpu:2","dev":"gpu","ep":"WebGpuExecutionProvider","disk":2.51,"vram":2.51,"quant":"RTN","noArm":false},{"id":"qwen2.5-3b-instruct-generic-cpu:2","dev":"cpu","ep":"CPUExecutionProvider","disk":2.97,"vram":2.97,"quant":"RTN","noArm":false}]},{"alias":"qwen2.5-7b","publisher":"Microsoft","license":"MIT","task":"chat-completion","tools":true,"variants":[{"id":"qwen2.5-7b-instruct-openvino-npu:4","dev":"npu","ep":"OpenVINOExecutionProvider","disk":4.17,"vram":4.17,"quant":"RTN","noArm":false},{"id":"qwen2.5-7b-instruct-qnn-npu:3","dev":"npu","ep":"QNNExecutionProvider","disk":6.81,"vram":6.81,"quant":"QuaRot+GPTQ","noArm":false},{"id":"qwen2.5-7b-instruct-vitis-npu:2","dev":"npu","ep":"VitisAIExecutionProvider","disk":5.2,"vram":5.2,"quant":"RTN","noArm":false},{"id":"qwen2.5-7b-instruct-cuda-gpu:4","dev":"gpu","ep":"CUDAExecutionProvider","disk":4.73,"vram":4.73,"quant":"RTN","noArm":false},{"id":"qwen2.5-7b-instruct-trtrtx-gpu:2","dev":"gpu","ep":"NvTensorRTRTXExecutionProvider","disk":5.49,"vram":5.49,"quant":"RTN","noArm":false},{"id":"qwen2.5-7b-instruct-openvino-gpu:2","dev":"gpu","ep":"OpenVINOExecutionProvider","disk":4.79,"vram":4.79,"quant":"RTN","noArm":false},{"id":"qwen2.5-7b-instruct-generic-gpu:4","dev":"gpu","ep":"WebGpuExecutionProvider","disk":5.2,"vram":5.2,"quant":"RTN","noArm":false},{"id":"qwen2.5-7b-instruct-generic-cpu:4","dev":"cpu","ep":"CPUExecutionProvider","disk":6.16,"vram":6.16,"quant":"RTN","noArm":false}]},{"alias":"qwen2.5-coder-0.5b","publisher":"Microsoft","license":"MIT","task":"chat-completion","tools":true,"variants":[{"id":"qwen2.5-coder-0.5b-instruct-openvino-npu:5","dev":"npu","ep":"OpenVINOExecutionProvider","disk":0.32,"vram":0.32,"quant":"RTN","noArm":false},{"id":"qwen2.5-coder-0.5b-instruct-qnn-npu:1","dev":"npu","ep":"QNNExecutionProvider","disk":0.43,"vram":0.43,"quant":"QuaRot+GPTQ","noArm":false},{"id":"qwen2.5-coder-0.5b-instruct-vitis-npu:2","dev":"npu","ep":"VitisAIExecutionProvider","disk":0.52,"vram":0.52,"quant":"RTN","noArm":false},{"id":"qwen2.5-coder-0.5b-instruct-cuda-gpu:4","dev":"gpu","ep":"CUDAExecutionProvider","disk":0.52,"vram":0.68,"quant":"RTN","noArm":false},{"id":"qwen2.5-coder-0.5b-instruct-trtrtx-gpu:2","dev":"gpu","ep":"NvTensorRTRTXExecutionProvider","disk":0.52,"vram":0.68,"quant":"RTN","noArm":false},{"id":"qwen2.5-coder-0.5b-instruct-openvino-gpu:2","dev":"gpu","ep":"OpenVINOExecutionProvider","disk":0.36,"vram":0.36,"quant":"RTN","noArm":false},{"id":"qwen2.5-coder-0.5b-instruct-generic-gpu:4","dev":"gpu","ep":"WebGpuExecutionProvider","disk":0.52,"vram":0.52,"quant":"RTN","noArm":false},{"id":"qwen2.5-coder-0.5b-instruct-generic-cpu:4","dev":"cpu","ep":"CPUExecutionProvider","disk":0.8,"vram":0.96,"quant":"RTN","noArm":false}]},{"alias":"qwen2.5-coder-1.5b","publisher":"Microsoft","license":"MIT","task":"chat-completion","tools":true,"variants":[{"id":"qwen2.5-coder-1.5b-instruct-openvino-npu:5","dev":"npu","ep":"OpenVINOExecutionProvider","disk":0.87,"vram":0.87,"quant":"RTN","noArm":false},{"id":"qwen2.5-coder-1.5b-instruct-qnn-npu:1","dev":"npu","ep":"QNNExecutionProvider","disk":1.06,"vram":1.06,"quant":"QuaRot+GPTQ","noArm":false},{"id":"qwen2.5-coder-1.5b-instruct-vitis-npu:2","dev":"npu","ep":"VitisAIExecutionProvider","disk":1.25,"vram":1.25,"quant":"RTN","noArm":false},{"id":"qwen2.5-coder-1.5b-instruct-cuda-gpu:4","dev":"gpu","ep":"CUDAExecutionProvider","disk":1.25,"vram":1.25,"quant":"RTN","noArm":false},{"id":"qwen2.5-coder-1.5b-instruct-trtrtx-gpu:2","dev":"gpu","ep":"NvTensorRTRTXExecutionProvider","disk":1.25,"vram":1.25,"quant":"RTN","noArm":false},{"id":"qwen2.5-coder-1.5b-instruct-openvino-gpu:2","dev":"gpu","ep":"OpenVINOExecutionProvider","disk":0.99,"vram":0.99,"quant":"RTN","noArm":false},{"id":"qwen2.5-coder-1.5b-instruct-generic-gpu:4","dev":"gpu","ep":"WebGpuExecutionProvider","disk":1.25,"vram":1.25,"quant":"RTN","noArm":false},{"id":"qwen2.5-coder-1.5b-instruct-generic-cpu:4","dev":"cpu","ep":"CPUExecutionProvider","disk":1.78,"vram":1.78,"quant":"RTN","noArm":false}]},{"alias":"qwen2.5-coder-14b","publisher":"Microsoft","license":"apache-2.0","task":"chat-completion","tools":true,"variants":[{"id":"qwen2.5-coder-14b-instruct-cuda-gpu:4","dev":"gpu","ep":"CUDAExecutionProvider","disk":8.79,"vram":8.79,"quant":"RTN","noArm":false},{"id":"qwen2.5-coder-14b-instruct-trtrtx-gpu:2","dev":"gpu","ep":"NvTensorRTRTXExecutionProvider","disk":8.79,"vram":8.79,"quant":"RTN","noArm":false},{"id":"qwen2.5-coder-14b-instruct-openvino-gpu:2","dev":"gpu","ep":"OpenVINOExecutionProvider","disk":9.08,"vram":9.08,"quant":"RTN","noArm":false},{"id":"qwen2.5-coder-14b-instruct-generic-gpu:4","dev":"gpu","ep":"WebGpuExecutionProvider","disk":8.79,"vram":8.79,"quant":"RTN","noArm":false},{"id":"qwen2.5-coder-14b-instruct-generic-cpu:4","dev":"cpu","ep":"CPUExecutionProvider","disk":11.06,"vram":11.06,"quant":"RTN","noArm":false}]},{"alias":"qwen2.5-coder-7b","publisher":"Microsoft","license":"MIT","task":"chat-completion","tools":true,"variants":[{"id":"qwen2.5-coder-7b-instruct-openvino-npu:4","dev":"npu","ep":"OpenVINOExecutionProvider","disk":4.17,"vram":4.17,"quant":"RTN","noArm":false},{"id":"qwen2.5-coder-7b-instruct-qnn-npu:1","dev":"npu","ep":"QNNExecutionProvider","disk":7.08,"vram":7.08,"quant":"QuaRot+GPTQ","noArm":false},{"id":"qwen2.5-coder-7b-instruct-vitis-npu:2","dev":"npu","ep":"VitisAIExecutionProvider","disk":4.73,"vram":4.73,"quant":"RTN","noArm":false},{"id":"qwen2.5-coder-7b-instruct-cuda-gpu:4","dev":"gpu","ep":"CUDAExecutionProvider","disk":4.73,"vram":4.73,"quant":"RTN","noArm":false},{"id":"qwen2.5-coder-7b-instruct-trtrtx-gpu:2","dev":"gpu","ep":"NvTensorRTRTXExecutionProvider","disk":4.73,"vram":4.73,"quant":"RTN","noArm":false},{"id":"qwen2.5-coder-7b-instruct-openvino-gpu:2","dev":"gpu","ep":"OpenVINOExecutionProvider","disk":4.8,"vram":4.8,"quant":"RTN","noArm":false},{"id":"qwen2.5-coder-7b-instruct-generic-gpu:4","dev":"gpu","ep":"WebGpuExecutionProvider","disk":4.73,"vram":4.73,"quant":"RTN","noArm":false},{"id":"qwen2.5-coder-7b-instruct-generic-cpu:4","dev":"cpu","ep":"CPUExecutionProvider","disk":6.16,"vram":6.16,"quant":"RTN","noArm":false}]},{"alias":"qwen3-0.6b","publisher":"Microsoft","license":"apache-2.0","task":"chat-completion","tools":true,"variants":[{"id":"qwen3-0.6b-cuda-gpu:2","dev":"gpu","ep":"CUDAExecutionProvider","disk":0.48,"vram":0.48,"quant":"RTN","noArm":false},{"id":"qwen3-0.6b-generic-gpu:2","dev":"gpu","ep":"WebGpuExecutionProvider","disk":0.52,"vram":0.52,"quant":"RTN","noArm":false},{"id":"qwen3-0.6b-generic-cpu:4","dev":"cpu","ep":"CPUExecutionProvider","disk":0.58,"vram":0.58,"quant":"RTN","noArm":false}]},{"alias":"qwen3-0.6b-generic-cpu-dq44","publisher":"Microsoft","license":"apache-2.0","task":"chat-completion","tools":false,"variants":[{"id":"qwen3-0.6b-generic-cpu-dq44:2","dev":"cpu","ep":"CPUExecutionProvider","disk":0.34,"vram":0.34,"quant":"RTN","noArm":false}]},{"alias":"qwen3-0.6b-pp-finetuned","publisher":"Microsoft","license":"apache-2.0","task":"chat-completion","tools":false,"variants":[{"id":"qwen3-0.6b-pp-finetuned-generic-cpu:4","dev":"cpu","ep":"CPUExecutionProvider","disk":0.47,"vram":0.47,"quant":"RTN","noArm":false}]},{"alias":"qwen3-0.6b-pp-finetuned-mtt","publisher":"Microsoft","license":"apache-2.0","task":"chat-completion","tools":true,"variants":[{"id":"qwen3-0.6b-pp-finetuned-mtt-generic-cpu:1","dev":"cpu","ep":"CPUExecutionProvider","disk":0.49,"vram":0.49,"quant":"RTN","noArm":false}]},{"alias":"qwen3-1.7b","publisher":"Microsoft","license":"apache-2.0","task":"chat-completion","tools":true,"variants":[{"id":"qwen3-1.7b-cuda-gpu:2","dev":"gpu","ep":"CUDAExecutionProvider","disk":1.29,"vram":1.29,"quant":"RTN","noArm":false},{"id":"qwen3-1.7b-generic-gpu:2","dev":"gpu","ep":"WebGpuExecutionProvider","disk":1.39,"vram":1.39,"quant":"RTN","noArm":false},{"id":"qwen3-1.7b-generic-cpu:2","dev":"cpu","ep":"CPUExecutionProvider","disk":1.32,"vram":1.32,"quant":"RTN","noArm":false}]},{"alias":"qwen3-14b","publisher":"Microsoft","license":"apache-2.0","task":"chat-completion","tools":true,"variants":[{"id":"qwen3-14b-cuda-gpu:2","dev":"gpu","ep":"CUDAExecutionProvider","disk":9.08,"vram":9.08,"quant":"GPTQ","noArm":false},{"id":"qwen3-14b-generic-gpu:2","dev":"gpu","ep":"WebGpuExecutionProvider","disk":9.93,"vram":9.93,"quant":"GPTQ","noArm":false},{"id":"qwen3-14b-generic-cpu:2","dev":"cpu","ep":"CPUExecutionProvider","disk":9.31,"vram":9.31,"quant":"GPTQ","noArm":false}]},{"alias":"qwen3-4b","publisher":"Microsoft","license":"apache-2.0","task":"chat-completion","tools":true,"variants":[{"id":"qwen3-4b-cuda-gpu:2","dev":"gpu","ep":"CUDAExecutionProvider","disk":2.63,"vram":2.63,"quant":"RTN","noArm":false},{"id":"qwen3-4b-generic-gpu:2","dev":"gpu","ep":"WebGpuExecutionProvider","disk":2.87,"vram":2.87,"quant":"RTN","noArm":false},{"id":"qwen3-4b-generic-cpu:3","dev":"cpu","ep":"CPUExecutionProvider","disk":2.7,"vram":2.7,"quant":"RTN","noArm":false}]},{"alias":"qwen3-8b","publisher":"Microsoft","license":"apache-2.0","task":"chat-completion","tools":true,"variants":[{"id":"qwen3-8b-cuda-gpu:2","dev":"gpu","ep":"CUDAExecutionProvider","disk":5.54,"vram":5.54,"quant":"RTN","noArm":false},{"id":"qwen3-8b-generic-gpu:2","dev":"gpu","ep":"WebGpuExecutionProvider","disk":6.0,"vram":6.0,"quant":"RTN","noArm":false},{"id":"qwen3-8b-generic-cpu:2","dev":"cpu","ep":"CPUExecutionProvider","disk":5.67,"vram":5.67,"quant":"RTN","noArm":false}]},{"alias":"qwen3-embedding-0.6b","publisher":"Microsoft","license":"apache-2.0","task":"embeddings","tools":false,"variants":[{"id":"qwen3-embedding-0.6b-cuda-gpu:1","dev":"gpu","ep":"CUDAExecutionProvider","disk":0.47,"vram":0.47,"quant":"RTN","noArm":false},{"id":"qwen3-embedding-0.6b-generic-gpu:1","dev":"gpu","ep":"WebGpuExecutionProvider","disk":0.5,"vram":0.5,"quant":"RTN","noArm":false},{"id":"qwen3-embedding-0.6b-generic-cpu:1","dev":"cpu","ep":"CPUExecutionProvider","disk":0.48,"vram":0.48,"quant":"RTN","noArm":false}]},{"alias":"qwen3-embedding-8b","publisher":"Microsoft","license":"apache-2.0","task":"embeddings","tools":false,"variants":[{"id":"qwen3-embedding-8b-cuda-gpu:1","dev":"gpu","ep":"CUDAExecutionProvider","disk":5.51,"vram":5.51,"quant":"RTN","noArm":false},{"id":"qwen3-embedding-8b-generic-gpu:1","dev":"gpu","ep":"WebGpuExecutionProvider","disk":6.0,"vram":6.0,"quant":"RTN","noArm":false},{"id":"qwen3-embedding-8b-generic-cpu:1","dev":"cpu","ep":"CPUExecutionProvider","disk":5.64,"vram":5.64,"quant":"RTN","noArm":false}]},{"alias":"qwen3-vl-2b-instruct","publisher":"Microsoft","license":"apache-2.0","task":"vision-language-chat","tools":true,"variants":[{"id":"qwen3-vl-2b-instruct-cuda-gpu:2","dev":"gpu","ep":"CUDAExecutionProvider","disk":2.11,"vram":2.11,"quant":"RTN","noArm":false},{"id":"qwen3-vl-2b-instruct-generic-cpu:2","dev":"cpu","ep":"CPUExecutionProvider","disk":1.34,"vram":1.34,"quant":"RTN","noArm":false}]},{"alias":"qwen3-vl-4b-instruct","publisher":"Microsoft","license":"apache-2.0","task":"vision-language-chat","tools":true,"variants":[{"id":"qwen3-vl-4b-instruct-cuda-gpu:2","dev":"gpu","ep":"CUDAExecutionProvider","disk":3.48,"vram":3.48,"quant":"RTN","noArm":false},{"id":"qwen3-vl-4b-instruct-generic-cpu:3","dev":"cpu","ep":"CPUExecutionProvider","disk":2.73,"vram":2.73,"quant":"RTN","noArm":false}]},{"alias":"qwen3-vl-8b-instruct","publisher":"Microsoft","license":"apache-2.0","task":"vision-language-chat","tools":true,"variants":[{"id":"qwen3-vl-8b-instruct-cuda-gpu:2","dev":"gpu","ep":"CUDAExecutionProvider","disk":5.99,"vram":5.99,"quant":"RTN","noArm":false},{"id":"qwen3-vl-8b-instruct-generic-cpu:2","dev":"cpu","ep":"CPUExecutionProvider","disk":4.96,"vram":4.96,"quant":"RTN","noArm":false}]},{"alias":"qwen3.5-0.8b","publisher":"Microsoft","license":"apache-2.0","task":"vision-language-chat","tools":true,"variants":[{"id":"qwen3.5-0.8b-cuda-gpu:4","dev":"gpu","ep":"CUDAExecutionProvider","disk":1.45,"vram":1.45,"quant":"RTN","noArm":false},{"id":"qwen3.5-0.8b-generic-gpu:4","dev":"gpu","ep":"WebGpuExecutionProvider","disk":1.45,"vram":1.45,"quant":"RTN","noArm":false},{"id":"qwen3.5-0.8b-generic-cpu:3","dev":"cpu","ep":"CPUExecutionProvider","disk":1.01,"vram":1.01,"quant":"RTN","noArm":false}]},{"alias":"qwen3.5-2b","publisher":"Microsoft","license":"apache-2.0","task":"vision-language-chat","tools":true,"variants":[{"id":"qwen3.5-2b-cuda-gpu:4","dev":"gpu","ep":"CUDAExecutionProvider","disk":2.86,"vram":2.86,"quant":"RTN","noArm":false},{"id":"qwen3.5-2b-generic-gpu:4","dev":"gpu","ep":"WebGpuExecutionProvider","disk":2.97,"vram":2.97,"quant":"RTN","noArm":false},{"id":"qwen3.5-2b-generic-cpu:3","dev":"cpu","ep":"CPUExecutionProvider","disk":1.75,"vram":1.75,"quant":"RTN","noArm":false}]},{"alias":"qwen3.5-2b-text","publisher":"Microsoft","license":"apache-2.0","task":"chat-completion","tools":true,"variants":[{"id":"qwen3.5-2b-text-cuda-gpu:1","dev":"gpu","ep":"CUDAExecutionProvider","disk":1.32,"vram":1.32,"quant":"RTN","noArm":false},{"id":"qwen3.5-2b-text-generic-gpu:3","dev":"gpu","ep":"WebGpuExecutionProvider","disk":1.32,"vram":1.32,"quant":"RTN","noArm":false},{"id":"qwen3.5-2b-text-generic-cpu:1","dev":"cpu","ep":"CPUExecutionProvider","disk":1.43,"vram":1.43,"quant":"RTN","noArm":false}]},{"alias":"qwen3.5-4b","publisher":"Microsoft","license":"apache-2.0","task":"vision-language-chat","tools":true,"variants":[{"id":"qwen3.5-4b-cuda-gpu:4","dev":"gpu","ep":"CUDAExecutionProvider","disk":4.08,"vram":4.08,"quant":"RTN","noArm":false},{"id":"qwen3.5-4b-generic-gpu:4","dev":"gpu","ep":"WebGpuExecutionProvider","disk":4.09,"vram":4.09,"quant":"RTN","noArm":false},{"id":"qwen3.5-4b-generic-cpu:3","dev":"cpu","ep":"CPUExecutionProvider","disk":3.01,"vram":3.01,"quant":"RTN","noArm":false}]},{"alias":"qwen3.5-9b","publisher":"Microsoft","license":"apache-2.0","task":"vision-language-chat","tools":true,"variants":[{"id":"qwen3.5-9b-cuda-gpu:4","dev":"gpu","ep":"CUDAExecutionProvider","disk":6.98,"vram":6.98,"quant":"RTN","noArm":false},{"id":"qwen3.5-9b-generic-gpu:4","dev":"gpu","ep":"WebGpuExecutionProvider","disk":6.98,"vram":6.98,"quant":"RTN","noArm":false},{"id":"qwen3.5-9b-generic-cpu:3","dev":"cpu","ep":"CPUExecutionProvider","disk":5.44,"vram":5.44,"quant":"RTN","noArm":false}]},{"alias":"qwen3.8-27b","publisher":"Microsoft","license":"apache-2.0","task":"coding","tools":true,"variants":[{"id":"qwen3.8-27b-cuda-gpu:1","dev":"gpu","ep":"CUDAExecutionProvider","disk":17.91,"vram":17.91,"quant":"RTN","noArm":false}]},{"alias":"smollm3-3b","publisher":"Microsoft","license":"apache-2.0","task":"chat-completion","tools":true,"variants":[{"id":"smollm3-3b-cuda-gpu:1","dev":"gpu","ep":"CUDAExecutionProvider","disk":2.02,"vram":2.02,"quant":"GPTQ","noArm":false},{"id":"smollm3-3b-generic-gpu:1","dev":"gpu","ep":"WebGpuExecutionProvider","disk":2.2,"vram":2.2,"quant":"GPTQ","noArm":false},{"id":"smollm3-3b-generic-cpu:1","dev":"cpu","ep":"CPUExecutionProvider","disk":2.08,"vram":2.08,"quant":"GPTQ","noArm":false}]},{"alias":"whisper-base","publisher":"Microsoft","license":"apache-2.0","task":"automatic-speech-recognition","tools":false,"variants":[{"id":"openai-whisper-base-cuda-gpu:3","dev":"gpu","ep":"CUDAExecutionProvider","disk":0.12,"vram":0.12,"quant":"RTN","noArm":false},{"id":"openai-whisper-base-generic-cpu:3","dev":"cpu","ep":"CPUExecutionProvider","disk":0.2,"vram":0.2,"quant":"RTN","noArm":false}]},{"alias":"whisper-large-v3-turbo","publisher":"Microsoft","license":"apache-2.0","task":"automatic-speech-recognition","tools":false,"variants":[{"id":"openai-whisper-large-v3-turbo-cuda-gpu:3","dev":"gpu","ep":"CUDAExecutionProvider","disk":0.78,"vram":0.78,"quant":"RTN","noArm":false},{"id":"openai-whisper-large-v3-turbo-generic-cpu:4","dev":"cpu","ep":"CPUExecutionProvider","disk":1.25,"vram":1.25,"quant":"RTN","noArm":false}]},{"alias":"whisper-medium","publisher":"Microsoft","license":"apache-2.0","task":"automatic-speech-recognition","tools":false,"variants":[{"id":"openai-whisper-medium-cuda-gpu:3","dev":"gpu","ep":"CUDAExecutionProvider","disk":0.62,"vram":0.62,"quant":"RTN","noArm":false},{"id":"openai-whisper-medium-generic-cpu:4","dev":"cpu","ep":"CPUExecutionProvider","disk":0.92,"vram":0.92,"quant":"RTN","noArm":false}]},{"alias":"whisper-small","publisher":"Microsoft","license":"apache-2.0","task":"automatic-speech-recognition","tools":false,"variants":[{"id":"openai-whisper-small-cuda-gpu:3","dev":"gpu","ep":"CUDAExecutionProvider","disk":0.29,"vram":0.29,"quant":"RTN","noArm":false},{"id":"openai-whisper-small-generic-cpu:4","dev":"cpu","ep":"CPUExecutionProvider","disk":0.43,"vram":0.43,"quant":"RTN","noArm":false}]},{"alias":"whisper-tiny","publisher":"Microsoft","license":"apache-2.0","task":"automatic-speech-recognition","tools":false,"variants":[{"id":"openai-whisper-tiny-cuda-gpu:3","dev":"gpu","ep":"CUDAExecutionProvider","disk":0.08,"vram":0.08,"quant":"RTN","noArm":false},{"id":"openai-whisper-tiny-generic-cpu:4","dev":"cpu","ep":"CPUExecutionProvider","disk":0.13,"vram":0.13,"quant":"RTN","noArm":false}]}];
+    
+const PROFILES = {
+  "snapdragon-32": {
+    arch: "arm64", totalGB: 32, defaultFreeGB: 14.0, unified: true, osGuardGB: 3.0,
+    name_zh: "Copilot+ PC 参考基线 · Snapdragon X Elite (32 GB 统一内存 · ARM64)",
+    name_en: "Copilot+ PC Reference · Snapdragon X Elite (32 GB Unified LPDDR5x · ARM64)",
+    gate_zh: "Windows 11 Build 26300 (>= 26100 ✓) · Hexagon NPU 45 TOPS 驱动 30.0.220.3000 (>= 30.0.140.0 ✓) · Adreno X1-85 D3D12 驱动 31.0.133.1 ✓ · 仅装 .NET 10 时将 TFM 设为 net10.0-windows10.0.26100.0",
+    gate_en: "Windows 11 Build 26300 (>= 26100 ✓) · Hexagon NPU 45 TOPS driver 30.0.220.3000 (>= 30.0.140.0 ✓) · Adreno X1-85 D3D12 driver 31.0.133.1 ✓ · On .NET 10-only hosts set TFM to net10.0-windows10.0.26100.0",
+    ladder: [
+      { dev: "npu", ep: "QNNExecutionProvider", prio: 0, label: "QNN NPU (P0)" },
+      { dev: "gpu", ep: "WebGpuExecutionProvider", prio: 2, label: "Adreno WebGPU (P2)" },
+      { dev: "cpu", ep: "CPUExecutionProvider", prio: 4, label: "ARM64 MLAS CPU (P4)" }
+    ]
+  },
+  "snapdragon-16": {
+    arch: "arm64", totalGB: 16, defaultFreeGB: 6.5, unified: true, osGuardGB: 3.0,
+    name_zh: "入门级 Copilot+ PC · Snapdragon X Plus / Elite (16 GB 统一内存 · ARM64)",
+    name_en: "Entry Copilot+ PC · Snapdragon X Plus / Elite (16 GB Unified LPDDR5x · ARM64)",
+    gate_zh: "Windows 11 24H2 (Build >= 26100) · Qualcomm Hexagon NPU 驱动 >= 30.0.140.0 · 16 GB 统一内存强烈建议优先选用 <= 2.8 GB 的 QNN 4-bit 变体",
+    gate_en: "Windows 11 24H2 (Build >= 26100) · Qualcomm Hexagon NPU driver >= 30.0.140.0 · On 16 GB unified memory, prioritize <= 2.8 GB QNN 4-bit variants",
+    ladder: [
+      { dev: "npu", ep: "QNNExecutionProvider", prio: 0, label: "QNN NPU (P0)" },
+      { dev: "gpu", ep: "WebGpuExecutionProvider", prio: 2, label: "Adreno WebGPU (P2)" },
+      { dev: "cpu", ep: "CPUExecutionProvider", prio: 4, label: "ARM64 MLAS CPU (P4)" }
+    ]
+  },
+  "nvidia-rtx": {
+    arch: "x64", totalGB: 16, defaultFreeGB: 12.0, unified: false, osGuardGB: 0.8,
+    name_zh: "独显工作站/游戏本 · NVIDIA GeForce RTX 30/40/50 系列 (独立显存 · x64)",
+    name_en: "Discrete GPU PC · NVIDIA GeForce RTX 30/40/50 Series (Dedicated VRAM · x64)",
+    gate_zh: "RTX 30XX 及以上 · 显卡驱动 >= 32.0.15.5585 + CUDA 12.5 · Windows 11 24H2 (Build >= 26100) · 独立显存不与浏览器系统内存争用，滑块代表当前可用空闲 VRAM",
+    gate_en: "GeForce RTX 30XX+ · GPU driver >= 32.0.15.5585 + CUDA 12.5 · Windows 11 24H2 (Build >= 26100) · Dedicated VRAM is isolated from system RAM; slider sets free VRAM",
+    ladder: [
+      { dev: "gpu", ep: "NvTensorRTRTXExecutionProvider", prio: 1, label: "TensorRT-RTX (P1)" },
+      { dev: "gpu", ep: "CUDAExecutionProvider", prio: 1, label: "NVIDIA CUDA (P1)" },
+      { dev: "gpu", ep: "WebGpuExecutionProvider", prio: 2, label: "WebGPU Dawn (P2)" },
+      { dev: "cpu", ep: "CPUExecutionProvider", prio: 4, label: "x64 MLAS CPU (P4)" }
+    ]
+  },
+  "intel-ultra": {
+    arch: "x64", totalGB: 32, defaultFreeGB: 14.0, unified: true, osGuardGB: 3.0,
+    name_zh: "Intel AI PC · Core Ultra 15代 ArrowLake+ (32 GB 共享内存 · x64)",
+    name_en: "Intel AI PC · Core Ultra ArrowLake 15th+ (32 GB Shared Memory · x64)",
+    gate_zh: "OpenVINO 驱动门槛：NPU (15代 ArrowLake+) >= 32.0.100.4239 · GPU (12代 AlderLake+) >= 32.0.101.1029 · CPU (11代 TigerLake+) >= 32.0.100.9565",
+    gate_en: "OpenVINO minimum drivers: NPU (ArrowLake 15th+) >= 32.0.100.4239 · GPU (AlderLake 12th+) >= 32.0.101.1029 · CPU (TigerLake 11th+) >= 32.0.100.9565",
+    ladder: [
+      { dev: "npu", ep: "OpenVINOExecutionProvider", prio: 0, label: "OpenVINO NPU (P0)" },
+      { dev: "gpu", ep: "OpenVINOExecutionProvider", prio: 1, label: "OpenVINO GPU (P1)" },
+      { dev: "gpu", ep: "WebGpuExecutionProvider", prio: 2, label: "WebGPU Dawn (P2)" },
+      { dev: "cpu", ep: "OpenVINOExecutionProvider", prio: 3, label: "OpenVINO CPU (P3)" },
+      { dev: "cpu", ep: "CPUExecutionProvider", prio: 4, label: "x64 MLAS CPU (P4)" }
+    ]
+  },
+  "amd-ryzen": {
+    arch: "x64", totalGB: 32, defaultFreeGB: 14.0, unified: true, osGuardGB: 3.0,
+    name_zh: "AMD Copilot+ PC · Ryzen AI 系列 (32 GB 统一内存 · x64)",
+    name_en: "AMD Copilot+ PC · Ryzen AI Series (32 GB Unified Memory · x64)",
+    gate_zh: "VitisAI NPU 要求 Adrenalin 25.6.3–25.9.1 且 NPU 驱动 32.00.0203.280–32.00.0203.297；GPU 通用路径通过 Dawn->D3D12 WebGPU 加速",
+    gate_en: "VitisAI NPU requires Adrenalin 25.6.3–25.9.1 with NPU driver 32.00.0203.280–32.00.0203.297; GPU fallback runs via Dawn->D3D12 WebGPU",
+    ladder: [
+      { dev: "npu", ep: "VitisAIExecutionProvider", prio: 0, label: "VitisAI NPU (P0)" },
+      { dev: "gpu", ep: "WebGpuExecutionProvider", prio: 2, label: "WebGPU Dawn (P2)" },
+      { dev: "cpu", ep: "CPUExecutionProvider", prio: 4, label: "x64 MLAS CPU (P4)" }
+    ]
+  },
+  "generic-cpu": {
+    arch: "x64", totalGB: 16, defaultFreeGB: 7.0, unified: true, osGuardGB: 3.0,
+    name_zh: "普通办公本 · Windows 11 24H2 纯 CPU 兜底模式 (16 GB 内存 · x64)",
+    name_en: "Standard Laptop · Windows 11 24H2 CPU-Only Fallback (16 GB RAM · x64)",
+    gate_zh: "Windows 11 24H2 (Build >= 26100) · 无需独立显卡或 NPU，内置 Microsoft MLAS 矩阵库执行 CPU 推理（建议选 <= 2.5 GB 轻量或语音模型）",
+    gate_en: "Windows 11 24H2 (Build >= 26100) · No NPU or dGPU needed; built-in Microsoft MLAS runs CPU inference (stick to <= 2.5 GB SLMs or ASR models)",
+    ladder: [
+      { dev: "cpu", ep: "CPUExecutionProvider", prio: 4, label: "x64 MLAS CPU (P4)" }
+    ]
+  }
+};
+
+
+    let state = {
+      profileId: "snapdragon-32",
+      freeGB: 14.0,
+      task: "all",
+      status: "all",
+      search: "",
+      selectedAlias: "phi-4-mini-reasoning",
+      codeTab: "cli"
+    };
+
+    const profileSelect = document.getElementById("profileSelect");
+    const freeSlider = document.getElementById("freeSlider");
+    const freeReadout = document.getElementById("freeReadout");
+    const taskSelect = document.getElementById("taskSelect");
+    const statusSelect = document.getElementById("statusSelect");
+    const searchInput = document.getElementById("searchInput");
+    const catalogBody = document.getElementById("catalogBody");
+    const codePre = document.getElementById("codePre");
+    const copyBtn = document.getElementById("copyBtn");
+
+    function initProfiles() {
+      Object.entries(PROFILES).forEach(([id, p]) => {
+        const opt = document.createElement("option");
+        opt.value = id;
+        opt.textContent = T.isZh ? p.name_zh : p.name_en;
+        profileSelect.appendChild(opt);
+      });
+      profileSelect.value = state.profileId;
+    }
+
+    function resolveVariant(model, profile) {
+      for (const step of profile.ladder) {
+        const hit = model.variants.find(v =>
+          v.dev === step.dev &&
+          v.ep === step.ep &&
+          !(profile.arch === "arm64" && v.noArm)
+        );
+        if (hit) {
+          return { ...hit, prio: step.prio, epLabel: step.label };
+        }
+      }
+      return null;
+    }
+
+    function computeFit(resolved, profile, freeGB) {
+      if (!resolved) {
+        return { status: "unavail", kvGB: 0, guardGB: 0, minRunGB: 0, minSafeGB: 0 };
+      }
+      const kvGB = resolved.vram >= 1.0 ? 1.0 : 0.4;
+      const guardGB = profile.osGuardGB;
+      const minRunGB = +(resolved.vram + kvGB).toFixed(2);
+      const minSafeGB = +(resolved.vram + kvGB + guardGB).toFixed(2);
+      let status = "oom";
+      if (freeGB >= minSafeGB) status = "ready";
+      else if (freeGB >= minRunGB) status = "tight";
+      return { status, kvGB, guardGB, minRunGB, minSafeGB };
+    }
+
+    function matchesTask(m, f) {
+      if (f === "all") return true;
+      if (f === "chat") return m.task === "chat-completion";
+      if (f === "coding") return m.task === "coding" || m.alias.includes("coder");
+      if (f === "vlm") return m.task === "vision-language-chat";
+      if (f === "asr") return m.task === "automatic-speech-recognition";
+      if (f === "embed") return m.task === "embeddings";
+      if (f === "decision") return m.task === "decision" || m.task === "ranking";
+      return true;
+    }
+
+    function pickRecommendation(rows) {
+      const preferred = [
+        "phi-4-mini-reasoning", "deepseek-r1-14b", "qwen2.5-coder-7b",
+        "phi-4-mini", "qwen3-4b", "deepseek-r1-7b", "qwen3.5-4b",
+        "phi-3.5-mini", "whisper-large-v3-turbo", "qwen2.5-coder-1.5b", "qwen2.5-0.5b"
+      ];
+      const readyRows = rows.filter(r => r.fit.status === "ready");
+      for (const alias of preferred) {
+        const found = readyRows.find(r => r.model.alias === alias);
+        if (found) return found;
+      }
+      return readyRows[0] || null;
+    }
+
+    function shortEpName(ep, dev) {
+      const base = ep.replace("ExecutionProvider", "");
+      return base + "[" + dev.toUpperCase() + "]";
+    }
+
+    function buildCodeSnippet(alias) {
+      if (state.codeTab === "cli") {
+        return `# Foundry Local CLI v0.14.0\nfoundry model info ${alias}\nfoundry chat ${alias}\n\n# ${T.isZh ? "可选：启动固定端口 OpenAI 兼容服务" : "Optional: fixed-port OpenAI-compatible server"}\nfoundry server start --port 39839 --idle-timeout 0`;
+      }
+      if (state.codeTab === "csharp") {
+        return `// csproj: <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>\n// dotnet add package Microsoft.AI.Foundry.Local.WinML\nawait FoundryLocalManager.CreateAsync(new Configuration { AppName = "demo" }, NullLogger.Instance);\nvar mgr = FoundryLocalManager.Instance;\nvar catalog = await mgr.GetCatalogAsync();\nvar model = await catalog.GetModelAsync("${alias}")!;\nif (!await model.IsCachedAsync()) await model.DownloadAsync();\nawait model.LoadAsync();`;
+      }
+      return `# ${T.isZh ? "隔离虚拟环境，切勿混装 foundry-local-sdk" : "Isolated venv — never co-install foundry-local-sdk"}\n# pip install foundry-local-sdk-winml\nfrom foundry_local_sdk import Configuration, FoundryLocalManager\nFoundryLocalManager.initialize(Configuration(app_name="demo"))\nmgr = FoundryLocalManager.instance\nmodel = mgr.catalog.get_model("${alias}")\nmodel.download()\nmodel.load()`;
+    }
+
+    function renderInspector(row, profile) {
+      const alias = row.model.alias;
+      const badgeEl = document.getElementById("inspSelectedBadge");
+      badgeEl.textContent = "";
+      const pill = document.createElement("span");
+      pill.className = "pill " + (
+        row.fit.status === "ready" ? "pill-ok" :
+        row.fit.status === "tight" ? "pill-warn" : "pill-err"
+      );
+      pill.textContent = alias + " · " + (row.resolved ? row.resolved.epLabel : (T.isZh ? "无变体" : "Unavailable"));
+      badgeEl.appendChild(pill);
+
+      const summaryEl = document.getElementById("memSummaryLine");
+      const trackEl = document.getElementById("memBarTrack");
+      const legendEl = document.getElementById("memLegend");
+      const calloutEl = document.getElementById("inspCallout");
+      trackEl.textContent = "";
+      legendEl.textContent = "";
+
+      const poolTotal = Math.max(profile.totalGB, state.freeGB);
+      const osUsed = Math.max(0, +(poolTotal - state.freeGB).toFixed(2));
+      const vram = row.resolved ? row.resolved.vram : 0;
+      const kv = row.fit.kvGB;
+      const guard = row.fit.guardGB;
+      const needed = +(vram + kv + guard).toFixed(2);
+      const remaining = +(state.freeGB - needed).toFixed(2);
+
+      summaryEl.textContent = T.isZh
+        ? `当前空闲 ${state.freeGB.toFixed(1)} GB · 选中变体运行占用 ${vram.toFixed(2)} GB + KV ${kv.toFixed(1)} GB + 护栏 ${guard.toFixed(1)} GB = 建议空闲 >= ${needed.toFixed(2)} GB`
+        : `Free ${state.freeGB.toFixed(1)} GB · Variant footprint ${vram.toFixed(2)} GB + KV ${kv.toFixed(1)} GB + Guard ${guard.toFixed(1)} GB = Recommended >= ${needed.toFixed(2)} GB`;
+
+      const denom = Math.max(poolTotal, osUsed + needed, 1);
+      const segs = [
+        { cls: "seg-used", val: osUsed, lbl: T.bar_used + ` (${osUsed.toFixed(1)}G)` },
+        { cls: "seg-model", val: vram, lbl: T.bar_model + ` (${vram.toFixed(2)}G)` },
+        { cls: "seg-kv", val: kv, lbl: T.bar_kv + ` (${kv.toFixed(1)}G)` },
+        { cls: "seg-guard", val: guard, lbl: T.bar_guard + ` (${guard.toFixed(1)}G)` }
+      ];
+      if (remaining > 0) {
+        segs.push({ cls: "seg-free", val: remaining, lbl: T.bar_headroom + ` (+${remaining.toFixed(2)}G)` });
+      } else if (row.resolved) {
+        segs.push({ cls: "seg-over", val: Math.abs(remaining), lbl: (T.isZh ? "超出护栏缺口" : "Deficit") + ` (${remaining.toFixed(2)}G)` });
+      }
+
+      const colors = {
+        "seg-used": "#64748B", "seg-model": "#0D9488", "seg-kv": "#F59E0B",
+        "seg-guard": "#3B82F6", "seg-free": "#22C55E", "seg-over": "#DC2626"
+      };
+      segs.forEach(s => {
+        if (s.val <= 0) return;
+        const div = document.createElement("div");
+        div.className = s.cls;
+        div.style.width = ((s.val / denom) * 100).toFixed(2) + "%";
+        div.title = s.lbl;
+        trackEl.appendChild(div);
+
+        const item = document.createElement("span");
+        const dot = document.createElement("span");
+        dot.className = "leg-dot";
+        dot.style.background = colors[s.cls];
+        item.appendChild(dot);
+        item.appendChild(document.createTextNode(s.lbl));
+        legendEl.appendChild(item);
+      });
+
+      let msg = "";
+      let cls = "callout-note ";
+      if (!row.resolved) {
+        cls += "callout-err";
+        msg = T.isZh
+          ? `该别名 (${alias}) 在当前硬件档位无兼容变体（例如仅发布 CUDA 重型变体或标记为 UNSUPPORTED_ON_ARM64）。`
+          : `Alias '${alias}' has no compatible variant for this hardware profile (e.g., CUDA-only model or flagged UNSUPPORTED_ON_ARM64).`;
+      } else if (alias === "phi-4-mini" && state.profileId.startsWith("snapdragon")) {
+        cls += row.fit.status === "ready" ? "callout-ok" : "callout-warn";
+        msg = T.isZh
+          ? `关键路由洞察：phi-4-mini (Instruct) 暂无高通 QNN 变体，因此在骁龙 X Elite 上自动路由至 Adreno X1-85 GPU 的 WebGpuExecutionProvider (3.74 GB)；若希望 100% 跑在 Hexagon NPU 上，请切换选型为 phi-4-mini-reasoning (2.78 GB QNN)！`
+          : `Snapdragon Routing Insight: 'phi-4-mini' (instruct) has NO QNN NPU variant in the catalog, so it routes to Adreno X1-85 GPU via WebGpuExecutionProvider (3.74 GB). Pick 'phi-4-mini-reasoning' (2.78 GB QNN) for native Hexagon NPU execution!`;
+      } else if (row.fit.status === "ready") {
+        cls += "callout-ok";
+        msg = T.isZh
+          ? `余量充裕：扣除模型权重、KV 缓存与 ${guard.toFixed(1)} GB 系统提交护栏后仍剩余 +${remaining.toFixed(2)} GB 缓冲，可稳定加载流式推理。`
+          : `Ample headroom: +${remaining.toFixed(2)} GB remains even after model weights, KV cache, and the ${guard.toFixed(1)} GB OS commit guard band.`;
+      } else if (row.fit.status === "tight") {
+        cls += "callout-warn";
+        msg = T.isZh
+          ? `临界预警：当前空闲内存仅够容纳权重+KV，已侵入 ${guard.toFixed(1)} GB 系统护栏！在统一内存机型上若后台浏览器/IDE 提交内存偏高，可能触发 QNN Error 5005 或空输出，建议先关闭重度应用。`
+          : `Tight headroom warning: Free RAM covers weights + KV but encroaches on the ${guard.toFixed(1)} GB OS Commit guard band. Close heavy browser/IDE tabs first to prevent QNN error 5005 or empty outputs.`;
+      } else {
+        cls += "callout-err";
+        msg = T.isZh
+          ? `内存/显存不足：至少需要 ${row.fit.minRunGB.toFixed(2)} GB 空闲空间（建议安全值 ${row.fit.minSafeGB.toFixed(2)} GB），请换用更小参数模型或释放内存。`
+          : `Insufficient memory: needs at least ${row.fit.minRunGB.toFixed(2)} GB free (${row.fit.minSafeGB.toFixed(2)} GB recommended with guard band). Select a smaller alias or free RAM.`;
+      }
+      calloutEl.className = cls;
+      calloutEl.textContent = msg;
+
+      codePre.textContent = buildCodeSnippet(alias);
+    }
+
+    function render() {
+      const profile = PROFILES[state.profileId];
+      freeReadout.textContent = state.freeGB.toFixed(1) + " GB";
+      document.getElementById("gateBody").textContent = T.isZh ? profile.gate_zh : profile.gate_en;
+
+      const allEvaluated = CATALOG.map(m => {
+        const resolved = resolveVariant(m, profile);
+        const fit = computeFit(resolved, profile, state.freeGB);
+        return { model: m, resolved, fit };
+      });
+
+      const taskFiltered = allEvaluated.filter(r => matchesTask(r.model, state.task));
+      const readyCount = taskFiltered.filter(r => r.fit.status === "ready").length;
+      const npuCount = taskFiltered.filter(r => r.fit.status === "ready" && r.resolved && r.resolved.dev === "npu").length;
+      const gpuCount = taskFiltered.filter(r => r.fit.status === "ready" && r.resolved && r.resolved.dev === "gpu").length;
+
+      document.getElementById("kpiReady").textContent = `${readyCount} / ${taskFiltered.length}`;
+      document.getElementById("kpiNpu").textContent = String(npuCount);
+      document.getElementById("kpiGpu").textContent = String(gpuCount);
+
+      const rec = pickRecommendation(taskFiltered);
+      const recEl = document.getElementById("kpiRec");
+      const recSubEl = document.getElementById("kpiRecSub");
+      if (rec) {
+        recEl.textContent = rec.model.alias;
+        recSubEl.textContent = `${rec.resolved.epLabel} · ${rec.resolved.vram.toFixed(2)} GB`;
+      } else {
+        recEl.textContent = "—";
+        recSubEl.textContent = T.kpi_rec_none;
+      }
+
+      const q = state.search.trim().toLowerCase();
+      const visible = taskFiltered.filter(r => {
+        if (state.status === "ready" && r.fit.status !== "ready") return false;
+        if (state.status === "tight" && r.fit.status !== "tight") return false;
+        if (state.status === "oom" && !(r.fit.status === "oom" || r.fit.status === "unavail")) return false;
+        if (q && !r.model.alias.toLowerCase().includes(q) && !r.model.task.toLowerCase().includes(q)) return false;
+        return true;
+      });
+
+      visible.sort((a, b) => {
+        const rank = { ready: 0, tight: 1, oom: 2, unavail: 3 };
+        if (rank[a.fit.status] !== rank[b.fit.status]) return rank[a.fit.status] - rank[b.fit.status];
+        const pa = a.resolved ? a.resolved.prio : 9;
+        const pb = b.resolved ? b.resolved.prio : 9;
+        if (pa !== pb) return pa - pb;
+        return a.model.alias.localeCompare(b.model.alias);
+      });
+
+      let activeRow = allEvaluated.find(r => r.model.alias === state.selectedAlias) || visible[0] || allEvaluated[0];
+      if (activeRow) renderInspector(activeRow, profile);
+
+      catalogBody.textContent = "";
+      visible.forEach(r => {
+        const tr = document.createElement("tr");
+        if (activeRow && r.model.alias === activeRow.model.alias) tr.className = "selected-row";
+        tr.addEventListener("click", () => {
+          state.selectedAlias = r.model.alias;
+          render();
+        });
+
+        const td1 = document.createElement("td");
+        const dAlias = document.createElement("div");
+        dAlias.className = "alias-name";
+        dAlias.textContent = r.model.alias;
+        const dMeta = document.createElement("div");
+        dMeta.className = "sub-meta";
+        dMeta.textContent = `${r.model.publisher} · ${r.model.license}`;
+        td1.appendChild(dAlias);
+        td1.appendChild(dMeta);
+
+        const td2 = document.createElement("td");
+        td2.appendChild(document.createTextNode(r.model.task));
+        if (r.model.tools) {
+          const br = document.createElement("div");
+          const tp = document.createElement("span");
+          tp.className = "pill pill-tool";
+          tp.textContent = T.cap_tools;
+          br.appendChild(tp);
+          td2.appendChild(br);
+        }
+
+        const td3 = document.createElement("td");
+        if (r.resolved) {
+          const epPill = document.createElement("span");
+          epPill.className = "pill " + (
+            r.resolved.dev === "npu" ? "pill-npu" :
+            r.resolved.dev === "gpu" ? "pill-gpu" : "pill-cpu"
+          );
+          epPill.textContent = r.resolved.epLabel;
+          td3.appendChild(epPill);
+          if (r.resolved.quant) {
+            const qd = document.createElement("div");
+            qd.className = "sub-meta";
+            qd.textContent = "Quant: " + r.resolved.quant;
+            td3.appendChild(qd);
+          }
+        } else {
+          td3.textContent = "—";
+        }
+
+        const td4 = document.createElement("td");
+        if (r.resolved) {
+          td4.style.fontVariantNumeric = "tabular-nums";
+          td4.textContent = `${r.resolved.disk.toFixed(2)} GB / ${r.resolved.vram.toFixed(2)} GB`;
+        } else {
+          td4.textContent = "—";
+        }
+
+        const td5 = document.createElement("td");
+        const stPill = document.createElement("span");
+        if (r.fit.status === "ready") {
+          stPill.className = "pill pill-ok";
+          stPill.textContent = T.badge_ready;
+        } else if (r.fit.status === "tight") {
+          stPill.className = "pill pill-warn";
+          stPill.textContent = T.badge_tight;
+        } else if (r.fit.status === "oom") {
+          stPill.className = "pill pill-err";
+          stPill.textContent = T.badge_oom;
+        } else {
+          stPill.className = "pill pill-err";
+          stPill.textContent = T.badge_unavail;
+        }
+        td5.appendChild(stPill);
+        if (r.resolved) {
+          const reqMeta = document.createElement("div");
+          reqMeta.className = "sub-meta";
+          reqMeta.textContent = (T.isZh ? "建议空闲 >= " : "Rec free >= ") + r.fit.minSafeGB.toFixed(2) + " GB";
+          td5.appendChild(reqMeta);
+        }
+
+        const td6 = document.createElement("td");
+        r.model.variants.forEach(v => {
+          const chip = document.createElement("span");
+          const isChosen = r.resolved && r.resolved.id === v.id && r.resolved.ep === v.ep && r.resolved.dev === v.dev;
+          const isArmBlocked = profile.arch === "arm64" && v.noArm;
+          chip.className = "var-chip" + (isChosen ? " var-active" : "") + (isArmBlocked ? " var-blocked" : "");
+          chip.textContent = `${shortEpName(v.ep, v.dev)}:${v.vram.toFixed(2)}G`;
+          if (isArmBlocked) chip.title = "UNSUPPORTED_ON_ARM64";
+          td6.appendChild(chip);
+        });
+
+        tr.appendChild(td1);
+        tr.appendChild(td2);
+        tr.appendChild(td3);
+        tr.appendChild(td4);
+        tr.appendChild(td5);
+        tr.appendChild(td6);
+        catalogBody.appendChild(tr);
+      });
+    }
+
+    profileSelect.addEventListener("change", () => {
+      state.profileId = profileSelect.value;
+      state.freeGB = PROFILES[state.profileId].defaultFreeGB;
+      freeSlider.value = String(state.freeGB);
+      render();
+    });
+    freeSlider.addEventListener("input", () => {
+      state.freeGB = parseFloat(freeSlider.value);
+      render();
+    });
+    taskSelect.addEventListener("change", () => { state.task = taskSelect.value; render(); });
+    statusSelect.addEventListener("change", () => { state.status = statusSelect.value; render(); });
+    searchInput.addEventListener("input", () => { state.search = searchInput.value; render(); });
+
+    document.querySelectorAll(".preset-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        state.freeGB = parseFloat(btn.getAttribute("data-mem"));
+        freeSlider.value = String(state.freeGB);
+        render();
+      });
+    });
+
+    document.querySelectorAll(".tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        state.codeTab = btn.getAttribute("data-tab");
+        render();
+      });
+    });
+
+    copyBtn.addEventListener("click", () => {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(codePre.textContent).then(() => {
+          copyBtn.textContent = T.btn_copied;
+          setTimeout(() => { copyBtn.textContent = T.btn_copy; }, 1400);
+        });
+      }
+    });
+
+    initProfiles();
+    render();
+  </script>
+</body>
+</html>
