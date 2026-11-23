@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self' data:">
+  <title>FoundryModelEstimatedCost 交互式 FinOps 遥测与缓存误差模拟器</title>
+  <style>
+    :root {
+      --bg: #F8FAFC;
+      --card: #FFFFFF;
+      --ink: #0F172A;
+      --muted: #475569;
+      --subtle: #64748B;
+      --border: #E2E8F0;
+      --azure: #0078D4;
+      --azure-dark: #1E3A8A;
+      --ok-bg: #DCFCE7;
+      --ok-fg: #166534;
+      --warn-bg: #FEF3C7;
+      --warn-fg: #92400E;
+      --err-bg: #FEE2E2;
+      --err-fg: #991B1B;
+      --teal-bg: #F0FDFA;
+      --teal-fg: #0F766E;
+      --teal-bd: #5EEAD4;
+      --purple-bg: #F5F3FF;
+      --purple-fg: #5B21B6;
+      --purple-bd: #C4B5FD;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Microsoft YaHei', 'PingFang SC', sans-serif;
+      line-height: 1.5;
+    }
+    .topbar {
+      background: #0F172A;
+      color: #F8FAFC;
+      padding: 12px 24px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid #1E293B;
+    }
+    .brand-wrap { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .brand-title { font-weight: 700; font-size: 14px; color: #38BDF8; }
+    .date-pill {
+      font-size: 11.5px;
+      background: rgba(56, 189, 248, 0.14);
+      color: #BAE6FD;
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      padding: 2px 9px;
+      border-radius: 999px;
+    }
+    .nav-links { display: flex; gap: 10px; flex-wrap: wrap; }
+    .nav-links a {
+      color: #E2E8F0;
+      text-decoration: none;
+      font-size: 12.5px;
+      padding: 5px 11px;
+      border-radius: 6px;
+      border: 1px solid #334155;
+      background: #1E293B;
+    }
+    .nav-links a:hover { background: #334155; color: #FFFFFF; }
+    .container { max-width: 1320px; margin: 0 auto; padding: 22px 20px 44px; }
+    .hero {
+      background: linear-gradient(125deg, #0F172A 0%, #1E3A8A 58%, #0078D4 100%);
+      color: #FFFFFF;
+      padding: 24px 28px;
+      border-radius: 14px;
+      margin-bottom: 18px;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+    }
+    .hero h1 { margin: 0 0 8px; font-size: 23px; font-weight: 700; }
+    .hero p { margin: 0; font-size: 13.5px; color: #DBEAFE; max-width: 1080px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.03);
+    }
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1.5fr 1.1fr 1.2fr 1.2fr 1.2fr 1.1fr;
+      gap: 14px;
+      align-items: end;
+    }
+    @media (max-width: 1180px) { .controls-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 720px) { .controls-grid { grid-template-columns: 1fr; } }
+    label.ctrl-lbl {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    select, input[type="number"] {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid #CBD5E1;
+      font-size: 13px;
+      color: var(--ink);
+      background: #FFFFFF;
+      font-variant-numeric: tabular-nums;
+    }
+    .slider-row { display: flex; align-items: center; gap: 8px; }
+    input[type="range"] { flex: 1; accent-color: var(--azure); cursor: pointer; }
+    .val-readout {
+      font-weight: 800;
+      font-size: 14px;
+      color: var(--azure-dark);
+      min-width: 58px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .presets-bar {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--border);
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--subtle);
+    }
+    .preset-btn {
+      background: #F1F5F9;
+      border: 1px solid #CBD5E1;
+      color: #1E293B;
+      border-radius: 999px;
+      padding: 4px 11px;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .preset-btn:hover, .preset-btn.active {
+      background: #E0F2FE;
+      border-color: #38BDF8;
+      color: #0369A1;
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 920px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 560px) { .kpi-grid { grid-template-columns: 1fr; } }
+    .kpi-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 15px 18px;
+    }
+    .kpi-lbl { font-size: 12px; font-weight: 700; color: var(--subtle); }
+    .kpi-val { font-size: 24px; font-weight: 800; margin: 5px 0 3px; font-variant-numeric: tabular-nums; }
+    .kpi-sub { font-size: 11.5px; color: var(--muted); }
+    .sim-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      gap: 18px;
+    }
+    @media (max-width: 980px) { .sim-grid { grid-template-columns: 1fr; } }
+    .sec-hdr {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .sec-hdr h2 { margin: 0; font-size: 15.5px; color: var(--ink); }
+    .bar-group { margin-bottom: 13px; }
+    .bar-hdr {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12.5px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      font-variant-numeric: tabular-nums;
+    }
+    .bar-track {
+      width: 100%;
+      height: 22px;
+      background: #E2E8F0;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .bar-fill { height: 100%; border-radius: 6px; transition: width 0.2s ease; }
+    .token-track {
+      width: 100%;
+      height: 20px;
+      background: #E2E8F0;
+      border-radius: 6px;
+      overflow: hidden;
+      display: flex;
+      margin: 8px 0;
+    }
+    .legend-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 11.5px;
+      color: var(--muted);
+    }
+    .leg-dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+      margin-right: 5px;
+      vertical-align: middle;
+    }
+    .callout {
+      margin-top: 12px;
+      padding: 10px 13px;
+      border-radius: 8px;
+      font-size: 12px;
+      border: 1px solid #CBD5E1;
+      background: #F8FAFC;
+    }
+    .callout-warn { background: #FFFBEB; border-color: #FCD34D; color: #92400E; }
+    .callout-err { background: #FEF2F2; border-color: #FCA5A5; color: #991B1B; }
+    .callout-ok { background: #F0FDF4; border-color: #86EFAC; color: #166534; }
+    .code-box {
+      background: #0F172A;
+      color: #E2E8F0;
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .code-tabs {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #1E293B;
+      padding: 6px 10px;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .tab-group { display: flex; gap: 4px; flex-wrap: wrap; }
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: #94A3B8;
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .tab-btn.active { background: #0078D4; color: #FFFFFF; }
+    .copy-btn {
+      background: #334155;
+      border: 1px solid #475569;
+      color: #F8FAFC;
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    pre.code-pre {
+      margin: 0;
+      padding: 12px 14px;
+      font-family: Consolas, 'SFMono-Regular', Menlo, monospace;
+      font-size: 11.5px;
+      line-height: 1.45;
+      overflow-x: auto;
+      white-space: pre;
+      max-height: 310px;
+    }
+    .filter-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+    .filter-btn {
+      background: #F1F5F9;
+      border: 1px solid #CBD5E1;
+      color: #334155;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .filter-btn.active { background: #1E3A8A; color: #FFFFFF; border-color: #1E3A8A; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    th {
+      text-align: left;
+      padding: 10px;
+      background: #F1F5F9;
+      color: #334155;
+      font-weight: 700;
+      border-bottom: 2px solid var(--border);
+      white-space: nowrap;
+    }
+    td {
+      padding: 10px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      font-variant-numeric: tabular-nums;
+    }
+    tbody tr { cursor: pointer; transition: background 0.1s ease; }
+    tbody tr:hover { background: #F8FAFC; }
+    tbody tr.selected-row { background: #EFF6FF; outline: 1px solid #93C5FD; }
+    .mono { font-family: Consolas, monospace; font-weight: 700; }
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      margin: 1px 3px 1px 0;
+    }
+    .pill-ok { background: var(--ok-bg); color: var(--ok-fg); }
+    .pill-warn { background: var(--warn-bg); color: var(--warn-fg); }
+    .pill-err { background: var(--err-bg); color: var(--err-fg); }
+    .pill-teal { background: var(--teal-bg); color: var(--teal-fg); border: 1px solid var(--teal-bd); }
+    .pill-purple { background: var(--purple-bg); color: var(--purple-fg); border: 1px solid var(--purple-bd); }
+    .footer { text-align: center; font-size: 12px; color: var(--subtle); margin-top: 22px; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand-wrap">
+      <span class="brand-title">Azure Monitor · FoundryModelEstimatedCost 交互式模拟器</span>
+      <span class="date-pill">2026-11-23 实测对账基线 · 严格离线 CSP</span>
+    </div>
+    <nav class="nav-links">
+      <a href="calculator.en.html">English</a>
+      <a href="../../foundry-model-estimated-cost-guide.md">实测与决策指南</a>
+      <a href="verify_foundry_estimated_cost.py">Python 自检脚本</a>
+      <a href="../../README.md">仓库首页</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h1>FoundryModelEstimatedCost (Preview) 缓存误差与 FinOps 遥测模拟器</h1>
+      <p>实时对比“手写 DIY Token KQL（不拆分缓存）”与“FoundryModelEstimatedCost 原生 KV-Cache + SKU 溢价计价”及“企业 EA/MCA 折后真实账单”之间的偏差，并自动生成防 HTTP 400 拆分查询与 PT5M 预算告警模板。</p>
+    </section>
+
+    <section class="card">
+      <div class="controls-grid">
+        <div>
+          <label class="ctrl-lbl" for="modelSelect">1. 选择商用模型与公开零售单价</label>
+          <select id="modelSelect"></select>
+        </div>
+        <div>
+          <label class="ctrl-lbl" for="skuSelect">2. 部署 SKU 层级</label>
+          <select id="skuSelect">
+            <option value="1.0">GlobalStandard (1.00× 基准)</option>
+            <option value="1.1">DataZoneStandard (+10% / 1.10×)</option>
+          </select>
+        </div>
+        <div>
+          <label class="ctrl-lbl" for="reqInput">3. 评估窗口总调用次数</label>
+          <input type="number" id="reqInput" min="1" max="10000000" step="1" value="5">
+        </div>
+        <div>
+          <label class="ctrl-lbl" for="inTokInput">4. 单次平均总输入 Token</label>
+          <input type="number" id="inTokInput" min="1" max="1000000" step="10" value="2928">
+        </div>
+        <div>
+          <label class="ctrl-lbl" for="cacheSlider">5. Prompt KV-Cache 命中率</label>
+          <div class="slider-row">
+            <input type="range" id="cacheSlider" min="0" max="90" step="0.1" value="55.1">
+            <span class="val-readout" id="cacheReadout">55.1%</span>
+          </div>
+        </div>
+        <div>
+          <label class="ctrl-lbl" for="outTokInput">6. 单次平均输出 Token</label>
+          <input type="number" id="outTokInput" min="0" max="200000" step="1" value="10.4">
+        </div>
+      </div>
+
+      <div class="presets-bar">
+        <span>一键实测/生产场景预设：</span>
+        <button type="button" class="preset-btn active" data-preset="emp-cache">★ 实测复现: gpt-4.1-mini (5次 · 55.1% 缓存)</button>
+        <button type="button" class="preset-btn" data-preset="emp-batch">实测复现: gpt-5.4 (121次并发 · 无缓存)</button>
+        <button type="button" class="preset-btn" data-preset="emp-dz">实测复现: DataZone +10% 溢价对照</button>
+        <button type="button" class="preset-btn" data-preset="prod-rag">生产 RAG 助手 (50,000次/天 · 70% 缓存)</button>
+        <button type="button" class="preset-btn" data-preset="prod-agent">多步 Agent 编排 (20,000次/天 · 80% 缓存)</button>
+        <span style="margin-left:auto;display:flex;align-items:center;gap:6px;">
+          <label for="eaSlider" style="font-weight:700;color:#475569;">可选 EA/MCA 谈判折扣:</label>
+          <input type="range" id="eaSlider" min="0" max="40" step="1" value="0" style="width:90px;">
+          <span id="eaReadout" style="font-weight:800;color:#0F766E;min-width:34px;">0%</span>
+        </span>
+      </div>
+    </section>
+
+    <section class="kpi-grid">
+      <div class="kpi-box">
+        <div class="kpi-lbl">FoundryModelEstimatedCost (公开牌价)</div>
+        <div class="kpi-val" id="kpiFoundry" style="color:#0F766E">$0.00352000</div>
+        <div class="kpi-sub" id="kpiFoundrySub">原生扣减缓存折扣 · 实测误差 0.0000%</div>
+      </div>
+      <div class="kpi-box">
+        <div class="kpi-lbl">传统手写 DIY Token KQL 估算</div>
+        <div class="kpi-val" id="kpiNaive" style="color:#DC2626">$0.00593920</div>
+        <div class="kpi-sub" id="kpiNaiveSub">未区分缓存导致虚高 +68.73%</div>
+      </div>
+      <div class="kpi-box">
+        <div class="kpi-lbl">折后 ACM 预期财务出账金额</div>
+        <div class="kpi-val" id="kpiAcm" style="color:#1E3A8A">$0.00352000</div>
+        <div class="kpi-sub" id="kpiAcmSub">延迟 4–24h · 含企业专属协议折扣</div>
+      </div>
+      <div class="kpi-box">
+        <div class="kpi-lbl">建议 PT5M 突增告警阈值</div>
+        <div class="kpi-val" id="kpiAlert" style="color:#0078D4">$1.00 USD</div>
+        <div class="kpi-sub">PT1M 入库延迟 ~90–130s · 仅支持 Total 聚合</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="sec-hdr">
+        <h2>三口径成本偏差对比与一键集成代码生成</h2>
+        <span id="rateSummaryBadge" class="pill pill-teal"></span>
+      </div>
+      <div class="sim-grid">
+        <div>
+          <div class="bar-group">
+            <div class="bar-hdr">
+              <span style="color:#991B1B">① 手写 DIY Token KQL (InputTokens 不拆缓存)</span>
+              <span id="barNaiveTxt" style="color:#991B1B">$0.00593920</span>
+            </div>
+            <div class="bar-track"><div class="bar-fill" id="barNaiveFill" style="background:#EF4444;width:100%"></div></div>
+          </div>
+
+          <div class="bar-group">
+            <div class="bar-hdr">
+              <span style="color:#0F766E">② FoundryModelEstimatedCost (原生感知缓存与 SKU)</span>
+              <span id="barFoundryTxt" style="color:#0F766E">$0.00352000</span>
+            </div>
+            <div class="bar-track"><div class="bar-fill" id="barFoundryFill" style="background:#0D9488;width:59%"></div></div>
+          </div>
+
+          <div class="bar-group">
+            <div class="bar-hdr">
+              <span style="color:#1E3A8A">③ Azure Cost Management 正式账单 (扣减 EA/MCA 折扣后)</span>
+              <span id="barAcmTxt" style="color:#1E3A8A">$0.00352000</span>
+            </div>
+            <div class="bar-track"><div class="bar-fill" id="barAcmFill" style="background:#2563EB;width:59%"></div></div>
+          </div>
+
+          <div style="font-size:12px;font-weight:700;color:#334155;margin-top:14px;">当前评估窗口 Token 结构拆解</div>
+          <div class="token-track" id="tokenTrack"></div>
+          <div class="legend-row" id="tokenLegend"></div>
+
+          <div class="callout callout-ok" id="archCallout"></div>
+        </div>
+
+        <div class="code-box">
+          <div class="code-tabs">
+            <div class="tab-group">
+              <button type="button" class="tab-btn active" data-tab="cli">Python CLI 自检</button>
+              <button type="button" class="tab-btn" data-tab="rest">REST 双查询 (防 400)</button>
+              <button type="button" class="tab-btn" data-tab="arm">ARM PT5M 告警</button>
+              <button type="button" class="tab-btn" data-tab="agent">Agent 子资源归因</button>
+            </div>
+            <button type="button" class="copy-btn" id="copyBtn">复制代码</button>
+          </div>
+          <pre class="code-pre" id="codePre"></pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="sec-hdr">
+        <h2>2026-11-23 跨区域实测对账记分卡（点击任意行载入上方模拟器复现）</h2>
+        <div class="filter-pills">
+          <button type="button" class="filter-btn active" data-filter="all">全部实测项 (11)</button>
+          <button type="button" class="filter-btn" data-filter="1p">1P OpenAI 模型</button>
+          <button type="button" class="filter-btn" data-filter="cache">KV-Cache 折扣验证</button>
+          <button type="button" class="filter-btn" data-filter="3p">3P 合作伙伴模型</button>
+          <button type="button" class="filter-btn" data-filter="sku">DataZone SKU 溢价</button>
+          <button type="button" class="filter-btn" data-filter="blind">Preview 模态盲区</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>实测场景 / 模型版本</th>
+              <th>部署 SKU 与单价 (/1M)</th>
+              <th>实测请求与 Token 明细</th>
+              <th>零售公式理论值</th>
+              <th>FoundryModelEstimatedCost</th>
+              <th>核验结论与工程提示</th>
+            </tr>
+          </thead>
+          <tbody id="scorecardBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer class="footer">
+      Azure Foundry Quick Start · FoundryModelEstimatedCost (Preview) 实测与合作伙伴参考工具 · 零外部请求 / 零敏感标识符
+    </footer>
+  </main>
+
+  <script>
+    (function () {
+      "use strict";
+
+      var MODELS = [
+        { id: "gpt-4.1-mini", label: "gpt-4.1-mini (2025-04-14)", inRate: 0.40, cachedRate: 0.10, outRate: 1.60, modality: "chat" },
+        { id: "gpt-4.1", label: "gpt-4.1 (2025-04-14)", inRate: 2.00, cachedRate: 0.50, outRate: 8.00, modality: "chat" },
+        { id: "gpt-5.4-mini", label: "gpt-5.4-mini (2026-03-17)", inRate: 0.75, cachedRate: 0.1875, outRate: 4.50, modality: "chat" },
+        { id: "gpt-5.4", label: "gpt-5.4 (2026-03-05)", inRate: 2.50, cachedRate: 0.625, outRate: 15.00, modality: "chat" },
+        { id: "kimi-k2.6", label: "MoonshotAI/Kimi-K2.6 (2026-04-20 · 3P)", inRate: 0.95, cachedRate: 0.2375, outRate: 4.00, modality: "chat" },
+        { id: "sku-cohort", label: "Frontier SKU 对照基准 ($4.00 / $20.00)", inRate: 4.00, cachedRate: 1.00, outRate: 20.00, modality: "chat" },
+        { id: "text-embedding-3-large", label: "text-embedding-3-large (Preview 盲区: $0)", inRate: 0.13, cachedRate: 0.13, outRate: 0.00, modality: "blind" },
+        { id: "flux-2-pro", label: "FLUX.2-pro / gpt-image-* (Preview 盲区: $0)", inRate: 0.00, cachedRate: 0.00, outRate: 0.00, modality: "blind" }
+      ];
+
+      var SCORECARD = [
+        {
+          id: "c1", cat: "1p", modelId: "gpt-5.4", sku: "1.0", reqs: 1, avgIn: 940, cachePct: 0, avgOut: 50,
+          name: "gpt-5.4 单次无缓存探针", ver: "2026-03-05 · Account 端点",
+          skuTxt: "GlobalStandard ($2.50 / $15.00)", usageTxt: "1 次 · 940 in + 50 out",
+          expected: "$0.00310000", reported: "$0.00310000", status: "ok",
+          note: "0.0000% 误差 · ~105s 入库 PT1M"
+        },
+        {
+          id: "c2", cat: "1p", modelId: "gpt-5.4", sku: "1.0", reqs: 121, avgIn: 214204 / 121, cachePct: 0, avgOut: 10314 / 121,
+          name: "gpt-5.4 高并发批量压测", ver: "2026-03-05 · 121 并发请求",
+          skuTxt: "GlobalStandard ($2.50 / $15.00)", usageTxt: "121 次 · 214,204 in + 10,314 out",
+          expected: "$0.69022000", reported: "$0.69022000", status: "ok",
+          note: "0.0000% 误差 · REST Total 零丢点"
+        },
+        {
+          id: "c3a", cat: "1p", modelId: "gpt-5.4-mini", sku: "1.0", reqs: 1, avgIn: 941, cachePct: 0, avgOut: 60,
+          name: "gpt-5.4-mini 账户级端点", ver: "2026-03-17 · cognitiveservices.azure.com",
+          skuTxt: "GlobalStandard ($0.75 / $4.50)", usageTxt: "1 次 · 941 in + 60 out",
+          expected: "$0.00097575", reported: "$0.00097575", status: "ok",
+          note: "0.0000% 误差 · 8 位小数微美分精度"
+        },
+        {
+          id: "c3b", cat: "1p", modelId: "gpt-5.4-mini", sku: "1.0", reqs: 1, avgIn: 938, cachePct: 0, avgOut: 50,
+          name: "gpt-5.4-mini Foundry Project 端点", ver: "2026-03-17 · /api/projects/<p>/openai/v1",
+          skuTxt: "GlobalStandard ($0.75 / $4.50)", usageTxt: "1 次 · 938 in + 50 out",
+          expected: "$0.00092850", reported: "$0.00092850", status: "warn",
+          note: "金额 0.0000% 误差，但 ProjectId 仍报 'N/A'"
+        },
+        {
+          id: "c4", cat: "1p", modelId: "gpt-4.1", sku: "1.0", reqs: 1, avgIn: 1087, cachePct: 0, avgOut: 50,
+          name: "gpt-4.1 标准对话探针", ver: "2025-04-14",
+          skuTxt: "GlobalStandard ($2.00 / $8.00)", usageTxt: "1 次 · 1,087 in + 50 out",
+          expected: "$0.00257400", reported: "$0.00257400", status: "ok",
+          note: "0.0000% 误差"
+        },
+        {
+          id: "c5", cat: "cache", modelId: "gpt-4.1-mini", sku: "1.0", reqs: 5, avgIn: 2928, cachePct: (8064 / 14640) * 100, avgOut: 10.4,
+          name: "gpt-4.1-mini Prompt 缓存命中 (55.1%)", ver: "2025-04-14 · 5 次连续调用",
+          skuTxt: "GlobalStandard ($0.40 未缓存 / $0.10 缓存 / $1.60 输出)", usageTxt: "5 次 · 14,640 in (6,576 未缓存 + 8,064 缓存) + 52 out",
+          expected: "$0.00352000 (DIY 粗算 $0.00593920)", reported: "$0.00352000", status: "ok",
+          note: "0.0000% 误差！消除手写 KQL +68.73% 虚高"
+        },
+        {
+          id: "c6", cat: "3p", modelId: "kimi-k2.6", sku: "1.0", reqs: 1, avgIn: 797, cachePct: 0, avgOut: 60,
+          name: "MoonshotAI/Kimi-K2.6 (3P 推理模型)", ver: "2026-04-20 · Foundry Partner",
+          skuTxt: "GlobalStandard ($0.95 / $4.00)", usageTxt: "1 次 · 797 in + 60 out (含 60 推理 Token)",
+          expected: "$0.00099715", reported: "$0.00099715", status: "ok",
+          note: "0.0000% 误差 · 完整覆盖 3P 伙伴模型与推理 Token"
+        },
+        {
+          id: "c7a", cat: "sku", modelId: "sku-cohort", sku: "1.0", reqs: 1, avgIn: 938, cachePct: 0, avgOut: 45,
+          name: "SKU 对照组 A: GlobalStandard", ver: "eastus2 同模型版本基准",
+          skuTxt: "GlobalStandard ($4.00 / $20.00)", usageTxt: "1 次 · 938 in + 45 out",
+          expected: "$0.00465200", reported: "$0.00465200", status: "ok",
+          note: "0.0000% 误差 · 1.00× 基准单价"
+        },
+        {
+          id: "c7b", cat: "sku", modelId: "sku-cohort", sku: "1.1", reqs: 1, avgIn: 939, cachePct: 0, avgOut: 45,
+          name: "SKU 对照组 B: DataZoneStandard (+10%)", ver: "eastus2 同模型版本溢价",
+          skuTxt: "DataZoneStandard ($4.40 / $22.00 · 1.10×)", usageTxt: "1 次 · 939 in + 45 out",
+          expected: "$0.00512160", reported: "$0.00512160", status: "ok",
+          note: "0.0000% 误差 · 自动精确乘入 1.10× 数据驻留溢价"
+        },
+        {
+          id: "c8", cat: "blind", modelId: "text-embedding-3-large", sku: "1.0", reqs: 2, avgIn: 497, cachePct: 0, avgOut: 0,
+          name: "向量嵌入: text-embedding-3-large", ver: "Embeddings 模态负向测试",
+          skuTxt: "Standard / GlobalStandard", usageTxt: "2 次 · InputTokens = 994",
+          expected: "> $0", reported: "$0 (无序列)", status: "err",
+          note: "Preview 盲区：需改用 InputTokens 告警 + ACM 账单"
+        },
+        {
+          id: "c9", cat: "blind", modelId: "flux-2-pro", sku: "1.0", reqs: 307, avgIn: 100, cachePct: 0, avgOut: 0,
+          name: "图像生成: FLUX.2-pro / FLUX.2-flex / gpt-image-*", ver: "30 天生图负载核对",
+          skuTxt: "按图像张数 / 图像 Token 计费", usageTxt: "307 次请求 / 39 张图像",
+          expected: "> $0", reported: "$0 (无序列)", status: "err",
+          note: "Preview 盲区：生图费用请通过 Azure Cost Management 对账"
+        }
+      ];
+
+      var PRESETS = {
+        "emp-cache": { modelId: "gpt-4.1-mini", sku: "1.0", reqs: 5, avgIn: 2928, cachePct: 8064 / 14640 * 100, avgOut: 10.4, ea: 0, rowId: "c5" },
+        "emp-batch": { modelId: "gpt-5.4", sku: "1.0", reqs: 121, avgIn: 214204 / 121, cachePct: 0, avgOut: 10314 / 121, ea: 0, rowId: "c2" },
+        "emp-dz": { modelId: "sku-cohort", sku: "1.1", reqs: 1, avgIn: 939, cachePct: 0, avgOut: 45, ea: 0, rowId: "c7b" },
+        "prod-rag": { modelId: "gpt-4.1-mini", sku: "1.0", reqs: 50000, avgIn: 6000, cachePct: 70, avgOut: 450, ea: 15, rowId: "" },
+        "prod-agent": { modelId: "gpt-5.4", sku: "1.0", reqs: 20000, avgIn: 18000, cachePct: 80, avgOut: 900, ea: 20, rowId: "" }
+      };
+
+      var state = {
+        activeTab: "cli",
+        activeFilter: "all",
+        selectedRowId: "c5",
+        exactCacheRatio: 8064 / 14640
+      };
+
+      var modelSelect = document.getElementById("modelSelect");
+      var skuSelect = document.getElementById("skuSelect");
+      var reqInput = document.getElementById("reqInput");
+      var inTokInput = document.getElementById("inTokInput");
+      var cacheSlider = document.getElementById("cacheSlider");
+      var cacheReadout = document.getElementById("cacheReadout");
+      var outTokInput = document.getElementById("outTokInput");
+      var eaSlider = document.getElementById("eaSlider");
+      var eaReadout = document.getElementById("eaReadout");
+
+      function esc(s) {
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function fmtUsd(val) {
+        if (val >= 100) return "$" + val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        if (val >= 1) return "$" + val.toFixed(4);
+        return "$" + val.toFixed(8);
+      }
+
+      function getModel() {
+        var id = modelSelect.value;
+        for (var i = 0; i < MODELS.length; i++) {
+          if (MODELS[i].id === id) return MODELS[i];
+        }
+        return MODELS[0];
+      }
+
+      function initModels() {
+        var html = "";
+        for (var i = 0; i < MODELS.length; i++) {
+          var m = MODELS[i];
+          html += '<option value="' + esc(m.id) + '">' + esc(m.label) + '</option>';
+        }
+        modelSelect.innerHTML = html;
+        modelSelect.value = "gpt-4.1-mini";
+      }
+
+      function buildSnippet(m, skuMult, inRate, cachedRate, outRate, alertUsd) {
+        var dep = m.id;
+        if (state.activeTab === "cli") {
+          return [
+            "# 零硬编码密钥：基于 az login Entra ID 令牌核验控制面定义 + 历史对账 + 单次 PT1M 探针",
+            "python workshops/foundry-estimated-cost/verify_foundry_estimated_cost.py \\",
+            "  --resource-id \"/subscriptions/<sub-id>/resourceGroups/<rg>/providers/Microsoft.CognitiveServices/accounts/<account>\" \\",
+            "  --endpoint \"https://<account>.cognitiveservices.azure.com\" \\",
+            "  --deployment \"" + dep + "\" \\",
+            "  --input-price-per-1m " + inRate.toFixed(4) + " \\",
+            "  --cached-input-price-per-1m " + cachedRate.toFixed(4) + " \\",
+            "  --output-price-per-1m " + outRate.toFixed(4)
+          ].join("\n");
+        }
+        if (state.activeTab === "rest") {
+          return [
+            "# ⚠️ 避坑：必须拆分为两次查询！InputTokens 不含 ProjectId 维度，合并带 ProjectId 过滤会触发 HTTP 400",
+            "RES_ID=\"/subscriptions/<sub-id>/resourceGroups/<rg>/providers/Microsoft.CognitiveServices/accounts/<account>\"",
+            "TIMESPAN=\"2026-11-16T00:00:00Z/2026-11-23T00:00:00Z\"",
+            "",
+            "# 1) 查询 FoundryModelEstimatedCost (必须使用 aggregation=Total)",
+            "az rest --method get --url \"https://management.azure.com${RES_ID}/providers/Microsoft.Insights/metrics?api-version=2024-02-01&metricnames=FoundryModelEstimatedCost&timespan=${TIMESPAN}&interval=P1D&aggregation=Total&\\$filter=ProjectId eq '*' and ModelDeploymentName eq '*'\"",
+            "",
+            "# 2) 独立查询 Token 与请求量指标 (切勿附带 ProjectId 过滤器)",
+            "az rest --method get --url \"https://management.azure.com${RES_ID}/providers/Microsoft.Insights/metrics?api-version=2024-02-01&metricnames=ModelRequests,InputTokens,OutputTokens&timespan=${TIMESPAN}&interval=P1D&aggregation=Total&\\$filter=ModelDeploymentName eq '*'\""
+          ].join("\n");
+        }
+        if (state.activeTab === "arm") {
+          return JSON.stringify({
+            type: "Microsoft.Insights/metricAlerts",
+            apiVersion: "2018-03-01",
+            name: "alert-foundry-" + dep + "-pt5m-cost-spike",
+            location: "global",
+            properties: {
+              severity: 2,
+              enabled: true,
+              scopes: ["/subscriptions/<sub-id>/resourceGroups/<rg>/providers/Microsoft.CognitiveServices/accounts/<account>"],
+              evaluationFrequency: "PT5M",
+              windowSize: "PT5M",
+              criteria: {
+                "odata.type": "Microsoft.Azure.Monitor.MultipleResourceMultipleMetricCriteria",
+                allOf: [{
+                  criterionType: "StaticThresholdCriterion",
+                  name: "RetailCostSpikeUSD",
+                  metricNamespace: "Microsoft.CognitiveServices/accounts",
+                  metricName: "FoundryModelEstimatedCost",
+                  timeAggregation: "Total",
+                  operator: "GreaterThan",
+                  threshold: alertUsd,
+                  dimensions: [{ name: "ModelDeploymentName", operator: "Include", values: [dep] }]
+                }]
+              }
+            }
+          }, null, 2);
+        }
+        return [
+          "# Foundry Agent Service 单 Agent 成本归因 (位于 accounts/projects 子资源，而非父账户)",
+          "PROJ_ID=\"/subscriptions/<sub-id>/resourceGroups/<rg>/providers/Microsoft.CognitiveServices/accounts/<account>/projects/<project>\"",
+          "",
+          "az rest --method get --url \"https://management.azure.com${PROJ_ID}/providers/Microsoft.Insights/metrics?api-version=2024-02-01&metricnames=AgentModelEstimatedCost,AgentModelUncachedInputTokens,AgentModelCacheReadTokens,AgentModelOutputTokens&interval=PT1H&aggregation=Total&\\$filter=AgentName eq '*' and ModelDeploymentName eq '*'\""
+        ].join("\n");
+      }
+
+      function render() {
+        var m = getModel();
+        var skuMult = parseFloat(skuSelect.value) || 1.0;
+        var reqs = Math.max(1, parseFloat(reqInput.value) || 1);
+        var avgIn = Math.max(0, parseFloat(inTokInput.value) || 0);
+        var sliderCachePct = parseFloat(cacheSlider.value) || 0;
+        var cacheRatio = state.exactCacheRatio !== null ? state.exactCacheRatio : (sliderCachePct / 100.0);
+        var avgOut = Math.max(0, parseFloat(outTokInput.value) || 0);
+        var eaPct = parseFloat(eaSlider.value) || 0;
+
+        cacheReadout.textContent = (cacheRatio * 100).toFixed(1) + "%";
+        eaReadout.textContent = eaPct.toFixed(0) + "%";
+
+        var inRate = m.inRate * skuMult;
+        var cachedRate = m.cachedRate * skuMult;
+        var outRate = m.outRate * skuMult;
+
+        document.getElementById("rateSummaryBadge").textContent =
+          m.modality === "blind"
+            ? (m.id + " · Preview 阶段未接入 ($0)")
+            : ("有效零售单价: 输入 $" + inRate.toFixed(4) + " / 缓存 $" + cachedRate.toFixed(4) + " / 输出 $" + outRate.toFixed(4) + " (每百万 Token)");
+
+        var totalIn = reqs * avgIn;
+        var cachedTok = Math.round(totalIn * cacheRatio);
+        var uncachedTok = Math.max(0, Math.round(totalIn) - cachedTok);
+        var totalOut = Math.round(reqs * avgOut);
+
+        var retailCacheAware = (uncachedTok * inRate + cachedTok * cachedRate + totalOut * outRate) / 1e6;
+        var naiveDiy = (Math.round(totalIn) * inRate + totalOut * outRate) / 1e6;
+        var reportedFoundry = m.modality === "blind" ? 0 : retailCacheAware;
+        var acmDiscounted = retailCacheAware * (1 - eaPct / 100.0);
+
+        var overPct = retailCacheAware > 0 ? ((naiveDiy - retailCacheAware) / retailCacheAware) * 100 : 0;
+        var suggested5m = Math.max(1, Math.ceil((reportedFoundry / 288) * 3 * 10) / 10);
+
+        document.getElementById("kpiFoundry").textContent = m.modality === "blind" ? "$0.00000000" : fmtUsd(reportedFoundry);
+        document.getElementById("kpiFoundrySub").textContent = m.modality === "blind"
+          ? "⚠️ Preview 模态盲区：平台指标无序列输出"
+          : ("原生扣减缓存折扣" + (skuMult > 1 ? " + 1.10× DataZone 溢价" : "") + " · 实测 0.0000% 误差");
+
+        document.getElementById("kpiNaive").textContent = m.modality === "blind" ? "不适用 / 失真" : fmtUsd(naiveDiy);
+        document.getElementById("kpiNaiveSub").textContent = m.modality === "blind"
+          ? "生图无文本 Token；向量需单独按 InputTokens 核算"
+          : (overPct > 0.01 ? ("未区分缓存导致虚高 +" + overPct.toFixed(2) + "%") : "0% 缓存命中时与零售公式一致");
+
+        document.getElementById("kpiAcm").textContent = m.modality === "blind" ? "以 ACM 实际出账为准" : fmtUsd(acmDiscounted);
+        document.getElementById("kpiAcmSub").textContent = eaPct > 0
+          ? ("扣减 " + eaPct + "% EA/MCA 折扣后 (比公开估算低 " + fmtUsd(retailCacheAware - acmDiscounted) + ")")
+          : "0% 协议折扣时与公开零售牌价一致 (延迟 4–24h)";
+
+        document.getElementById("kpiAlert").textContent = "$" + suggested5m.toFixed(2) + " USD";
+
+        var maxCost = Math.max(naiveDiy, reportedFoundry, acmDiscounted, 1e-9);
+        document.getElementById("barNaiveTxt").textContent = m.modality === "blind" ? "N/A" : (fmtUsd(naiveDiy) + (overPct > 0.01 ? " (+" + overPct.toFixed(2) + "%)" : ""));
+        document.getElementById("barFoundryTxt").textContent = fmtUsd(reportedFoundry);
+        document.getElementById("barAcmTxt").textContent = m.modality === "blind" ? "ACM 全量覆盖" : fmtUsd(acmDiscounted);
+
+        document.getElementById("barNaiveFill").style.width = m.modality === "blind" ? "0%" : Math.min(100, (naiveDiy / maxCost) * 100).toFixed(1) + "%";
+        document.getElementById("barFoundryFill").style.width = m.modality === "blind" ? "2%" : Math.min(100, (reportedFoundry / maxCost) * 100).toFixed(1) + "%";
+        document.getElementById("barAcmFill").style.width = m.modality === "blind" ? "100%" : Math.min(100, (acmDiscounted / maxCost) * 100).toFixed(1) + "%";
+
+        var grandTok = Math.max(1, uncachedTok + cachedTok + totalOut);
+        var pUncached = (uncachedTok / grandTok) * 100;
+        var pCached = (cachedTok / grandTok) * 100;
+        var pOut = (totalOut / grandTok) * 100;
+
+        document.getElementById("tokenTrack").innerHTML =
+          '<div style="width:' + pUncached.toFixed(1) + '%;background:#64748B"></div>' +
+          '<div style="width:' + pCached.toFixed(1) + '%;background:#14B8A6"></div>' +
+          '<div style="width:' + pOut.toFixed(1) + '%;background:#3B82F6"></div>';
+
+        document.getElementById("tokenLegend").innerHTML =
+          '<span><i class="leg-dot" style="background:#64748B"></i>未缓存输入: ' + uncachedTok.toLocaleString() + ' (' + pUncached.toFixed(1) + '%)</span>' +
+          '<span><i class="leg-dot" style="background:#14B8A6"></i>缓存命中输入: ' + cachedTok.toLocaleString() + ' (' + pCached.toFixed(1) + '%)</span>' +
+          '<span><i class="leg-dot" style="background:#3B82F6"></i>输出 Token: ' + totalOut.toLocaleString() + ' (' + pOut.toFixed(1) + '%)</span>';
+
+        var callout = document.getElementById("archCallout");
+        if (m.modality === "blind") {
+          callout.className = "callout callout-err";
+          callout.textContent = "⛔ Preview 覆盖盲区警示：实测表明 Embeddings (text-embedding-3-large) 与图像生成 (FLUX.2-pro / gpt-image-*) 在 FoundryModelEstimatedCost 中上报 $0。请务必同时配置 ModelRequests/InputTokens 速率告警与 Azure Cost Management 预算兜底。";
+        } else if (overPct >= 25) {
+          callout.className = "callout callout-ok";
+          callout.textContent = "✅ 高缓存红利命中：当前 " + (cacheRatio * 100).toFixed(1) + "% 缓存命中率下，传统 DIY Token KQL 会高估 +" + overPct.toFixed(2) + "% (" + fmtUsd(naiveDiy - reportedFoundry) + " 虚假超支噪音)，切换至 FoundryModelEstimatedCost 可立即消除误报且无需改动业务代码。";
+        } else if (eaPct > 0) {
+          callout.className = "callout callout-warn";
+          callout.textContent = "⚠️ 财务口径提示：FoundryModelEstimatedCost 按公开零售牌价输出 " + fmtUsd(reportedFoundry) + "，不含当前设定的 " + eaPct + "% 企业协议折扣；请将其定位为运维实时流速表，月末结算以 ACM (" + fmtUsd(acmDiscounted) + ") 为准。";
+        } else {
+          callout.className = "callout callout-ok";
+          callout.textContent = "✅ 零误差实时基线：已验证 1P/3P 对话与推理模型在 PT1M (~90–130s) 桶中与公开零售公式保持 8 位小数精确一致；严禁通过 Diagnostic Settings AzureMetrics 表聚合（高并发漏采达 95.1%）。";
+        }
+
+        document.getElementById("codePre").textContent = buildSnippet(m, skuMult, inRate, cachedRate, outRate, suggested5m);
+        renderScorecard();
+      }
+
+      function renderScorecard() {
+        var html = "";
+        for (var i = 0; i < SCORECARD.length; i++) {
+          var r = SCORECARD[i];
+          if (state.activeFilter !== "all" && r.cat !== state.activeFilter) continue;
+          var pillCls = r.status === "ok" ? "pill-ok" : (r.status === "warn" ? "pill-warn" : "pill-err");
+          var selCls = state.selectedRowId === r.id ? "selected-row" : "";
+          html += '<tr class="' + selCls + '" data-row="' + esc(r.id) + '">' +
+            '<td><div class="mono">' + esc(r.name) + '</div><div style="font-size:11px;color:#64748B">' + esc(r.ver) + '</div></td>' +
+            '<td>' + esc(r.skuTxt) + '</td>' +
+            '<td>' + esc(r.usageTxt) + '</td>' +
+            '<td class="mono">' + esc(r.expected) + '</td>' +
+            '<td class="mono" style="color:#0F766E">' + esc(r.reported) + '</td>' +
+            '<td><span class="pill ' + pillCls + '">' + esc(r.note) + '</span></td>' +
+            '</tr>';
+        }
+        document.getElementById("scorecardBody").innerHTML = html;
+      }
+
+      function loadScenario(cfg, exactRatio) {
+        modelSelect.value = cfg.modelId;
+        skuSelect.value = cfg.sku;
+        reqInput.value = cfg.reqs;
+        inTokInput.value = Math.round(cfg.avgIn * 100) / 100;
+        cacheSlider.value = cfg.cachePct.toFixed(1);
+        outTokInput.value = Math.round(cfg.avgOut * 100) / 100;
+        if (typeof cfg.ea === "number") eaSlider.value = cfg.ea;
+        state.selectedRowId = cfg.rowId || "";
+        state.exactCacheRatio = typeof exactRatio === "number" ? exactRatio : null;
+        render();
+      }
+
+      cacheSlider.addEventListener("input", function () {
+        state.exactCacheRatio = null;
+        render();
+      });
+      [modelSelect, skuSelect, reqInput, inTokInput, outTokInput, eaSlider].forEach(function (el) {
+        el.addEventListener("input", function () {
+          state.exactCacheRatio = null;
+          render();
+        });
+      });
+
+      document.querySelectorAll(".preset-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          document.querySelectorAll(".preset-btn").forEach(function (b) { b.classList.remove("active"); });
+          btn.classList.add("active");
+          var key = btn.getAttribute("data-preset");
+          var p = PRESETS[key];
+          if (p) loadScenario(p, key === "emp-cache" ? (8064 / 14640) : null);
+        });
+      });
+
+      document.querySelectorAll(".tab-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          document.querySelectorAll(".tab-btn").forEach(function (b) { b.classList.remove("active"); });
+          btn.classList.add("active");
+          state.activeTab = btn.getAttribute("data-tab");
+          render();
+        });
+      });
+
+      document.querySelectorAll(".filter-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          document.querySelectorAll(".filter-btn").forEach(function (b) { b.classList.remove("active"); });
+          btn.classList.add("active");
+          state.activeFilter = btn.getAttribute("data-filter");
+          renderScorecard();
+        });
+      });
+
+      document.getElementById("scorecardBody").addEventListener("click", function (e) {
+        var tr = e.target.closest("tr[data-row]");
+        if (!tr) return;
+        var rowId = tr.getAttribute("data-row");
+        for (var i = 0; i < SCORECARD.length; i++) {
+          if (SCORECARD[i].id === rowId) {
+            var r = SCORECARD[i];
+            document.querySelectorAll(".preset-btn").forEach(function (b) { b.classList.remove("active"); });
+            loadScenario({
+              modelId: r.modelId,
+              sku: r.sku,
+              reqs: r.reqs,
+              avgIn: r.avgIn,
+              cachePct: r.cachePct,
+              avgOut: r.avgOut,
+              ea: 0,
+              rowId: r.id
+            }, r.id === "c5" ? (8064 / 14640) : null);
+            break;
+          }
+        }
+      });
+
+      document.getElementById("copyBtn").addEventListener("click", function () {
+        var btn = document.getElementById("copyBtn");
+        var txt = document.getElementById("codePre").textContent;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(txt).then(function () {
+            btn.textContent = "已复制 ✓";
+            setTimeout(function () { btn.textContent = "复制代码"; }, 1400);
+          });
+        }
+      });
+
+      initModels();
+      render();
+    })();
+  </script>
+</body>
+</html>

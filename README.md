@@ -8,6 +8,8 @@ Microsoft Foundry 与 Azure OpenAI 的学习资料，以及 Claude on Foundry Wo
 
 | 目标 | 文档 | 语言与状态 |
 | --- | --- | --- |
+| 评估 Azure Monitor `FoundryModelEstimatedCost` (Preview) 可用度、实测精度与 FinOps 告警架构 | [Foundry 估算成本中文指南](foundry-model-estimated-cost-guide.md) / [English](foundry-model-estimated-cost-guide.en.md) · [Python 自检脚本](workshops/foundry-estimated-cost/verify_foundry_estimated_cost.py) | 2026-11-23 跨区域实测双语版；涵盖 KV-Cache 折扣对账、DataZone 溢价、6 大避坑与 ARM 告警模板 |
+| 交互模拟 Prompt KV-Cache 命中误差、EA/MCA 折扣差额并生成防 HTTP 400 查询与告警代码 | [FinOps 缓存误差与遥测模拟器 (中文)](workshops/foundry-estimated-cost/calculator.html) / [English Simulator](workshops/foundry-estimated-cost/calculator.en.html) | 2026-11-23 实测记分卡自包含 HTML；离线 Strict CSP 零外部依赖 |
 | 评估 Windows / Copilot+ PC 端侧 Foundry Local 硬件准入、EP 路由与统一内存选型 | [Foundry Local 端侧 AI 中文指南](foundry-local-on-device-ai-guide.md) / [English](foundry-local-on-device-ai-guide.en.md) | 2026-11-19 核验双语版；涵盖四层技术栈边界、QNN/WebGPU/CUDA 路由与排障 |
 | 交互测算硬件档位、空闲内存余量与 62 款端侧模型自动 EP 命中 | [Foundry Local 交互容量评估器 (中文)](workshops/foundry-local/sizer.html) / [English Sizer](workshops/foundry-local/sizer.en.html) | 2026-11-19 目录快照自包含 HTML；离线 Strict CSP 零外部依赖 |
 | 在本仓库运行三条 Workshop 路径 | [Claude 实操中文入口](workshops/claude-foundry/README.md) / [English](workshops/claude-foundry/README.en.md) | 2026-10-09 整合；离线检查与云端步骤分开 |
